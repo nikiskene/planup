@@ -1,59 +1,25 @@
 //src/components/layout/navConfig.ts
 
 import {
-  BellRing,
-  FileText,
-  Gauge,
+  CheckSquare,
   HandCoins,
+  Home,
   NotebookPen,
   Settings,
+  ShoppingCart,
   Users,
 } from 'lucide-react';
-
 import type { NavItem } from './navTypes';
 
-export const NAV_ITEMS: NavItem[] = [
-  {
-    label: 'Radar',
-    href: '/inbox',
-    icon: Gauge,
-  },
-  {
-    label: 'Follow-ups',
-    href: '/tasks',
-    icon: BellRing,
-  },
-  {
-    label: 'People',
-    href: '/crm/contacts',
-    icon: Users,
-  },
-  {
-    label: 'Opportunities',
-    href: '/crm/deals',
-    icon: HandCoins,
-  },
-  {
-    label: 'Notes',
-    href: '/notes',
-    icon: NotebookPen,
-  },
-  {
-    label: 'Settings',
-    href: '/settings',
-    icon: Settings,
-  },
+export const HOME_NAV_ITEMS: NavItem[] = [
+  { label: 'Home', href: '/inbox', icon: Home },
+  { label: 'Shopping List', href: '/shopping', icon: ShoppingCart },
 ];
 
-export const SECONDARY_NAV_ITEMS: NavItem[] = [
-  {
-    label: 'Companies',
-    href: '/crm/companies',
-    icon: FileText,
-  },
-  {
-    label: 'Interactions',
-    href: '/crm/interactions',
-    icon: FileText,
-  },
+export const WORK_NAV_ITEMS: NavItem[] = [
+  { label: 'Tasks', href: '/tasks', icon: CheckSquare },
+  { label: 'Opportunities', href: '/crm/deals', icon: HandCoins },
+  { label: 'Notes', href: '/notes', icon: NotebookPen },
+  { label: 'People', href: '/crm/contacts', icon: Users },
+  { label: 'Settings', href: '/settings', icon: Settings },
 ];
