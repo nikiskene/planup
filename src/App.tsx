@@ -21,7 +21,7 @@ import Settings from './pages/Settings';
 import SettingsPage from './pages/settings/SettingsPage';
 
 // ✅ default import (CrmContacts.tsx exports default)
-import CrmContacts from './pages/crm/contacts/CrmContacts';
+import PeoplePage from './pages/crm/contacts/PeoplePage';
 
 import CrmCompanies from './pages/crm/CrmCompanies';
 import CrmInteractions from './pages/crm/CrmInteractions';
@@ -137,7 +137,7 @@ function App() {
                 path="/crm/contacts"
                 element={
                   <AppPage>
-                    <LeadsPage view="people"><CrmContacts /></LeadsPage>
+                    <LeadsPage view="people"><PeoplePage /></LeadsPage>
                   </AppPage>
                 }
               />

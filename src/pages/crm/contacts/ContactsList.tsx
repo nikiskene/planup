@@ -1,6 +1,7 @@
+// src/pages/crm/contacts/ContactsList.tsx
 import { MoreVertical, Pencil, Trash2, User } from 'lucide-react';
 import type { ContactRow } from './types';
-import { fullName, nameColorClass } from './utils';
+import { fullName } from './utils';
 
 type Props = {
   rows: ContactRow[];
@@ -37,7 +38,7 @@ export default function ContactsList({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <User size={16} className="text-gray-500" />
-                <div className={`font-medium truncate ${nameColorClass(c.ui_status)}`}>
+                <div className="font-medium truncate text-gray-900">
                   {fullName(c)}
                 </div>
               </div>
