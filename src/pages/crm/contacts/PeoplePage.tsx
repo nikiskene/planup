@@ -8,26 +8,20 @@ import { useToast } from '../../../contexts/ToastContext';
 import useCrmContacts from './useCrmContacts';
 import ContactsList from './ContactsList';
 import ContactModal from './ContactModal';
-import type { ContactRow, LeadStatus } from './types';
+import type { ContactRow } from './types';
 import { fullName, sanitizeUrl } from './utils';
+import { useLeadStatuses } from '../useLeadStatuses';
 
-type StatusTab = 'all' | LeadStatus | 'unassigned';
+type StatusTab = string;
 type ActivityTab = 'active' | 'passive';
 type Form = { firstName: string; lastName: string; email: string; linkedinUrl: string; phone: string; isActive: boolean };
 const emptyForm: Form = { firstName: '', lastName: '', email: '', linkedinUrl: '', phone: '', isActive: true };
-const STATUS_TABS: Array<{ value: StatusTab; label: string }> = [
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'connected', label: 'Connected' },
-  { value: 'bad_timing', label: 'Bad Timing' },
-  { value: 'unassigned', label: 'Unassigned' },
-  { value: 'all', label: 'All' },
-];
-
 export default function PeoplePage() {
   const navigate = useNavigate();
   const { activeWorkspaceId } = useWorkspace();
   const { showToast } = useToast();
   const { contacts, loading, reload } = useCrmContacts(activeWorkspaceId, showToast);
+  const { statuses } = useLeadStatuses(activeWorkspaceId, showToast);
   const [statusTab, setStatusTab] = useState<StatusTab>('in_progress');
   const [activityTab, setActivityTab] = useState<ActivityTab>('active');
   const [query, setQuery] = useState('');
@@ -35,9 +29,11 @@ export default function PeoplePage() {
   const [showNew, setShowNew] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<Form>(emptyForm);
+  const statusTabs = useMemo(() => [...statuses.map((status) => ({ value: status.key, label: status.name })),
+    { value: 'unassigned', label: 'Unassigned' }, { value: 'all', label: 'All' }], [statuses]);
   const rows = contacts as unknown as ContactRow[];
   const activityRows = useMemo(() => rows.filter((row) => row.is_active === (activityTab === 'active')), [rows, activityTab]);
-  const counts = useMemo(() => Object.fromEntries(STATUS_TABS.map((tab) => [tab.value, activityRows.filter((row) => tab.value === 'all' || (tab.value === 'unassigned' ? !row.lead_status : row.lead_status === tab.value)).length])), [activityRows]);
+  const counts = useMemo(() => Object.fromEntries(statusTabs.map((tab) => [tab.value, activityRows.filter((row) => tab.value === 'all' || (tab.value === 'unassigned' ? !row.lead_status : row.lead_status === tab.value)).length])), [activityRows, statusTabs]);
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
     return activityRows.filter((row) => {
@@ -77,7 +73,7 @@ export default function PeoplePage() {
       <div className="mb-4 flex items-start justify-between gap-4"><div><h2 className="text-2xl font-semibold text-gray-900">People</h2><p className="mt-1 text-sm text-gray-600">Work through leads by relationship status.</p></div>
         <button onClick={() => { setForm({ ...emptyForm, isActive: activityTab === 'active' }); setShowNew(true); }} className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 font-medium text-white"><Plus size={18} /> New person</button></div>
       <div className="mb-4 overflow-x-auto"><div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
-        {STATUS_TABS.map((tab) => <button key={tab.value} type="button" onClick={() => setStatusTab(tab.value)} className={`whitespace-nowrap border-r border-gray-200 px-4 py-2 text-sm font-medium last:border-r-0 ${statusTab === tab.value ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}>{tab.label} <span className="ml-1 opacity-70">{counts[tab.value]}</span></button>)}
+        {statusTabs.map((tab) => <button key={tab.value} type="button" onClick={() => setStatusTab(tab.value)} className={`whitespace-nowrap border-r border-gray-200 px-4 py-2 text-sm font-medium last:border-r-0 ${statusTab === tab.value ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}>{tab.label} <span className="ml-1 opacity-70">{counts[tab.value]}</span></button>)}
       </div></div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="inline-flex self-start overflow-hidden rounded-lg border border-gray-200 bg-white">
         {(['active', 'passive'] as ActivityTab[]).map((tab) => <button key={tab} onClick={() => setActivityTab(tab)} className={`px-4 py-2 text-sm font-medium capitalize ${activityTab === tab ? 'bg-gray-900 text-white' : 'text-gray-700'}`}>{tab}</button>)}

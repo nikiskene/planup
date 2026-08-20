@@ -5,7 +5,7 @@ import { supabase } from '../../../lib/supabase';
 export type CompanyRow = { id: string; name: string };
 export type DealRow = { id: string; name: string | null };
 
-export type LeadStatus = 'connected' | 'bad_timing' | 'in_progress';
+export type LeadStatus = string;
 
 export type ContactRow = {
   id: string;
@@ -32,7 +32,7 @@ export type ContactRow = {
 type Params = {
   activeWorkspaceId: string | null | undefined;
   id: string | undefined;
-  showToast: (msg: string, type?: any) => void;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onNotFound?: () => void;
 };
 
@@ -127,10 +127,10 @@ export function useCrmContact({ activeWorkspaceId, id, showToast, onNotFound }: 
       const c = data as ContactRow;
       setContact(c);
       hydrateForm(c);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       setContact(null);
-      showToastRef.current?.(err?.message || 'Failed to load contact', 'error');
+      showToastRef.current?.(err instanceof Error ? err.message : 'Failed to load contact', 'error');
     } finally {
       setLoadingContact(false);
     }

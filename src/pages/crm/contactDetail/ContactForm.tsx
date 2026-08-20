@@ -1,6 +1,9 @@
 // src/pages/crm/contactDetail/ContactForm.tsx
 import type { CompanyRow, ContactRow, DealRow, LeadStatus } from './types';
 import CompanyField from './CompanyField';
+import { useWorkspace } from '../../../contexts/WorkspaceContext';
+import { useToast } from '../../../contexts/ToastContext';
+import { useLeadStatuses } from '../useLeadStatuses';
 
 type Props = {
   contact: ContactRow;
@@ -32,12 +35,6 @@ type Props = {
   setPhone: (v: string) => void;
 };
 
-const LEAD_STATUS_OPTIONS: Array<{ value: LeadStatus; label: string }> = [
-  { value: 'connected', label: 'Connected' },
-  { value: 'bad_timing', label: 'Bad Timing' },
-  { value: 'in_progress', label: 'In Progress' },
-];
-
 export default function ContactForm({
   contact,
   companies,
@@ -62,6 +59,9 @@ export default function ContactForm({
   phone,
   setPhone,
 }: Props) {
+  const { activeWorkspaceId } = useWorkspace();
+  const { showToast } = useToast();
+  const { statuses } = useLeadStatuses(activeWorkspaceId, showToast);
   const currentDealName = contact.deal?.name || null;
 
   return (
@@ -77,16 +77,16 @@ export default function ContactForm({
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="">None</option>
-          {LEAD_STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
+          {statuses.map((opt) => (
+            <option key={opt.key} value={opt.key}>
+              {opt.name}
             </option>
           ))}
         </select>
 
         {contact.lead_status ? (
           <div className="text-xs text-gray-500 mt-1">
-            Current: {LEAD_STATUS_OPTIONS.find((o) => o.value === contact.lead_status)?.label || contact.lead_status}
+            Current: {statuses.find((option) => option.key === contact.lead_status)?.name || contact.lead_status}
           </div>
         ) : null}
       </div>

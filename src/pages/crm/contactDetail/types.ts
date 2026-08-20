@@ -23,4 +23,4 @@ export type ContactRow = {
 
 export type TagRow = { id: string; name: string };
 export type DealRow = { id: string; name: string | null };
-export type LeadStatus = 'connected' | 'bad_timing' | 'in_progress';
+export type LeadStatus = string;

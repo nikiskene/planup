@@ -1,5 +1,6 @@
+// src/pages/crm/contacts/types.ts
 export type UiStatus = 'disconnect' | 'open_task' | 'no_task';
-export type LeadStatus = 'connected' | 'bad_timing' | 'in_progress';
+export type LeadStatus = string;
 
 export type ContactRow = {
   id: string;
