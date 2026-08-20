@@ -1,4 +1,6 @@
+// src/pages/crm/contactDetail/ContactForm.tsx
 import type { CompanyRow, ContactRow, DealRow, LeadStatus } from './types';
+import CompanyField from './CompanyField';
 
 type Props = {
   contact: ContactRow;
@@ -60,31 +62,11 @@ export default function ContactForm({
   phone,
   setPhone,
 }: Props) {
-  const currentCompanyName = contact.company?.name || null;
   const currentDealName = contact.deal?.name || null;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-      {/* Company */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
-        <select
-          value={companyId}
-          onChange={(e) => setCompanyId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="">None</option>
-          {companies.map((co) => (
-            <option key={co.id} value={co.id}>
-              {co.name}
-            </option>
-          ))}
-        </select>
-
-        {currentCompanyName ? (
-          <div className="text-xs text-gray-500 mt-1">Current: {currentCompanyName}</div>
-        ) : null}
-      </div>
+      <CompanyField companies={companies} value={companyId} onChange={setCompanyId} />
 
       {/* Lead Status */}
       <div>

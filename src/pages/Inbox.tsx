@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 const actions = [
   { title: 'Tasks', detail: 'What needs to get done.', href: '/tasks', icon: CheckSquare },
   { title: 'Opportunities', detail: 'What may be worth pursuing.', href: '/crm/deals', icon: HandCoins },
-  { title: 'People', detail: 'Relationships, companies and history.', href: '/crm/contacts', icon: Users },
+  { title: 'Leads', detail: 'People, companies and relationship history.', href: '/crm/contacts', icon: Users },
   { title: 'Notes', detail: 'Things worth remembering.', href: '/notes', icon: NotebookPen },
 ];
 

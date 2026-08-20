@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+// src/pages/crm/companies/CompaniesPage.tsx
+import { useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../lib/supabase';
 import { useWorkspace } from '../../../contexts/WorkspaceContext';
 import { useToast } from '../../../contexts/ToastContext';
-import type { CompanyRow } from './types';
-import { sanitizeUrl } from './utils';
 import { useCompanies } from './hooks/useCompanies';
+import { useCompanyEditor } from './hooks/useCompanyEditor';
 import CompanyRowItem from './components/CompanyRowItem';
 import CompanyModal from './components/CompanyModal';
 
@@ -14,255 +13,40 @@ export default function CompaniesPage() {
   const { activeWorkspaceId } = useWorkspace();
   const { showToast } = useToast();
   const navigate = useNavigate();
-
   const { companies, loading, fetchCompanies } = useCompanies(activeWorkspaceId, showToast);
-
-  const [q, setQ] = useState('');
-
+  const editor = useCompanyEditor(activeWorkspaceId, showToast, fetchCompanies);
+  const [query, setQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  // New modal
-  const [showNew, setShowNew] = useState(false);
-  const [creating, setCreating] = useState(false);
-
-  // Edit modal
-  const [editing, setEditing] = useState<CompanyRow | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-
-  // Form fields
-  const [name, setName] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [linkedinUrl, setLinkedinUrl] = useState('');
-  const [notes, setNotes] = useState('');
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpenMenuId(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
   const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase();
+    const term = query.trim().toLowerCase();
     if (!term) return companies;
-    return companies.filter((c) => {
-      const n = (c.name || '').toLowerCase();
-      const w = (c.website_url || '').toLowerCase();
-      const l = (c.linkedin_url || '').toLowerCase();
-      return n.includes(term) || w.includes(term) || l.includes(term);
-    });
-  }, [companies, q]);
-
-  const resetForm = () => {
-    setName('');
-    setWebsiteUrl('');
-    setLinkedinUrl('');
-    setNotes('');
-  };
-
-  const loadFormFromCompany = (c: CompanyRow) => {
-    setName(c.name || '');
-    setWebsiteUrl(c.website_url || '');
-    setLinkedinUrl(c.linkedin_url || '');
-    setNotes(c.notes || '');
-  };
-
-  const createCompany = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeWorkspaceId) return;
-
-    const n = name.trim();
-    if (!n) {
-      showToast('Name is required', 'error');
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const { error } = await supabase.from('crm_companies').insert({
-        workspace_id: activeWorkspaceId,
-        name: n,
-        website_url: sanitizeUrl(websiteUrl),
-        linkedin_url: sanitizeUrl(linkedinUrl),
-        notes: notes.trim() ? notes.trim() : null,
-      });
-
-      if (error) throw error;
-
-      showToast('Company created', 'success');
-      setShowNew(false);
-      resetForm();
-      await fetchCompanies();
-    } catch (err: any) {
-      console.error(err);
-      showToast(err?.message || 'Failed to create company', 'error');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const startEdit = (c: CompanyRow) => {
-    setOpenMenuId(null);
-    setEditing(c);
-    loadFormFromCompany(c);
-  };
-
-  const saveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeWorkspaceId || !editing) return;
-
-    const n = name.trim();
-    if (!n) {
-      showToast('Name is required', 'error');
-      return;
-    }
-
-    setSavingEdit(true);
-    try {
-      const { error } = await supabase
-        .from('crm_companies')
-        .update({
-          name: n,
-          website_url: sanitizeUrl(websiteUrl),
-          linkedin_url: sanitizeUrl(linkedinUrl),
-          notes: notes.trim() ? notes.trim() : null,
-        })
-        .eq('workspace_id', activeWorkspaceId)
-        .eq('id', editing.id);
-
-      if (error) throw error;
-
-      showToast('Company updated', 'success');
-      setEditing(null);
-      resetForm();
-      await fetchCompanies();
-    } catch (err: any) {
-      console.error(err);
-      showToast(err?.message || 'Failed to update company', 'error');
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  const deleteCompany = async (c: CompanyRow) => {
-    setOpenMenuId(null);
-
-    const ok = confirm(
-      `Delete "${c.name}"?\n\nThis may fail if contacts still reference this company.`
-    );
-    if (!ok) return;
-
-    try {
-      const { error } = await supabase
-        .from('crm_companies')
-        .delete()
-        .eq('workspace_id', c.workspace_id)
-        .eq('id', c.id);
-
-      if (error) throw error;
-
-      showToast('Company deleted', 'success');
-      await fetchCompanies();
-    } catch (err: any) {
-      console.error(err);
-      showToast(err?.message || 'Failed to delete company', 'error');
-    }
-  };
+    return companies.filter((company) => [company.name, company.website_url, company.linkedin_url]
+      .some((value) => value?.toLowerCase().includes(term)));
+  }, [companies, query]);
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">CRM · Companies</h1>
-          <p className="text-sm text-gray-600 mt-1">Companies inside this workspace.</p>
-        </div>
-
-        <button
-          onClick={() => {
-            resetForm();
-            setShowNew(true);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
-        >
-          <Plus size={18} />
-          New company
-        </button>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div><h2 className="text-2xl font-semibold text-gray-900">Companies</h2>
+          <p className="mt-1 text-sm text-gray-600">Edit company details and see everyone associated with each company.</p></div>
+        <button onClick={editor.openNew} className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 font-medium text-white hover:bg-gray-800"><Plus size={18} /> New company</button>
       </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-2">
-          <Search size={18} className="text-gray-500" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search name, website, LinkedIn…"
-            className="w-full px-2 py-2 text-sm focus:outline-none"
-          />
-          {q.trim() ? (
-            <button type="button" onClick={() => setQ('')} className="p-2 rounded-lg hover:bg-gray-100" title="Clear">
-              <X size={16} className="text-gray-500" />
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-gray-600">Loading companies…</div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 text-gray-700">No companies yet.</div>
+      <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4"><div className="flex items-center gap-2">
+        <Search size={18} className="text-gray-500" />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, website, LinkedIn…" className="w-full px-2 py-2 text-sm focus:outline-none" />
+        {query.trim() ? <button type="button" onClick={() => setQuery('')} className="rounded-lg p-2 hover:bg-gray-100" title="Clear"><X size={16} className="text-gray-500" /></button> : null}
+      </div></div>
+      {loading ? <div className="text-gray-600">Loading companies…</div> : filtered.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-6 text-gray-700">No companies yet.</div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="divide-y divide-gray-200">
-            {filtered.map((c) => (
-              <CompanyRowItem
-                key={c.id}
-                company={c}
-                onOpen={() => navigate(`/crm/companies`)} // no detail page yet
-                openMenu={openMenuId === c.id}
-                onToggleMenu={() => setOpenMenuId((v) => (v === c.id ? null : c.id))}
-                onCloseMenu={() => setOpenMenuId(null)}
-                onEdit={() => startEdit(c)}
-                onDelete={() => deleteCompany(c)}
-              />
-            ))}
-          </div>
-        </div>
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white"><div className="divide-y divide-gray-200">
+          {filtered.map((company) => <CompanyRowItem key={company.id} company={company} onOpen={() => navigate(`/crm/companies/${company.id}`)} openMenu={openMenuId === company.id}
+            onToggleMenu={() => setOpenMenuId((value) => value === company.id ? null : company.id)} onCloseMenu={() => setOpenMenuId(null)}
+            onEdit={() => { setOpenMenuId(null); editor.openEdit(company); }} onDelete={() => { setOpenMenuId(null); editor.remove(company); }} />)}
+        </div></div>
       )}
-
-      <CompanyModal
-        title="New company"
-        open={showNew}
-        busy={creating}
-        onClose={() => setShowNew(false)}
-        onSubmit={createCompany}
-        name={name}
-        setName={setName}
-        websiteUrl={websiteUrl}
-        setWebsiteUrl={setWebsiteUrl}
-        linkedinUrl={linkedinUrl}
-        setLinkedinUrl={setLinkedinUrl}
-        notes={notes}
-        setNotes={setNotes}
-        submitLabel="Create company"
-      />
-
-      <CompanyModal
-        title="Edit company"
-        open={Boolean(editing)}
-        busy={savingEdit}
-        onClose={() => setEditing(null)}
-        onSubmit={saveEdit}
-        name={name}
-        setName={setName}
-        websiteUrl={websiteUrl}
-        setWebsiteUrl={setWebsiteUrl}
-        linkedinUrl={linkedinUrl}
-        setLinkedinUrl={setLinkedinUrl}
-        notes={notes}
-        setNotes={setNotes}
-        submitLabel="Save changes"
-      />
+      <CompanyModal title="New company" open={editor.showNew} busy={editor.busy} onClose={editor.close} onSubmit={editor.create} {...editor.formProps} submitLabel="Create company" />
+      <CompanyModal title="Edit company" open={Boolean(editor.editing)} busy={editor.busy} onClose={editor.close} onSubmit={editor.save} {...editor.formProps} submitLabel="Save changes" />
     </div>
   );
 }

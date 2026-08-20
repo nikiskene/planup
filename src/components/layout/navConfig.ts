@@ -20,6 +20,6 @@ export const WORK_NAV_ITEMS: NavItem[] = [
   { label: 'Tasks', href: '/tasks', icon: CheckSquare },
   { label: 'Opportunities', href: '/crm/deals', icon: HandCoins },
   { label: 'Notes', href: '/notes', icon: NotebookPen },
-  { label: 'People', href: '/crm/contacts', icon: Users },
+  { label: 'Leads', href: '/crm/contacts', icon: Users },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];

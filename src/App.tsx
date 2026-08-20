@@ -26,6 +26,8 @@ import CrmCompanies from './pages/crm/CrmCompanies';
 import CrmInteractions from './pages/crm/CrmInteractions';
 import CrmContactDetail from './pages/crm/CrmContactDetail';
 import CrmDeals from './pages/crm/deals/CrmDeals';
+import LeadsPage from './pages/crm/LeadsPage';
+import CompanyDetailPage from './pages/crm/companies/CompanyDetailPage';
 
 function HomeRedirect() {
   const { activeWorkspaceId, loading, membership } = useWorkspace();
@@ -134,7 +136,7 @@ function App() {
                 path="/crm/contacts"
                 element={
                   <AppPage>
-                    <CrmContacts />
+                    <LeadsPage view="people"><CrmContacts /></LeadsPage>
                   </AppPage>
                 }
               />
@@ -150,7 +152,15 @@ function App() {
                 path="/crm/companies"
                 element={
                   <AppPage>
-                    <CrmCompanies />
+                    <LeadsPage view="companies"><CrmCompanies /></LeadsPage>
+                  </AppPage>
+                }
+              />
+              <Route
+                path="/crm/companies/:id"
+                element={
+                  <AppPage>
+                    <CompanyDetailPage />
                   </AppPage>
                 }
               />
