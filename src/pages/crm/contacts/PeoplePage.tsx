@@ -16,7 +16,7 @@ type StatusTab = string;
 type ActivityTab = 'active' | 'passive';
 type Form = { firstName: string; lastName: string; email: string; linkedinUrl: string; phone: string; isActive: boolean };
 const emptyForm: Form = { firstName: '', lastName: '', email: '', linkedinUrl: '', phone: '', isActive: true };
-export default function PeoplePage() {
+export function PeoplePage() {
   const navigate = useNavigate();
   const { activeWorkspaceId } = useWorkspace();
   const { showToast } = useToast();

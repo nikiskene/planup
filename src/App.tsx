@@ -21,7 +21,7 @@ import Settings from './pages/Settings';
 import SettingsPage from './pages/settings/SettingsPage';
 
 // ✅ default import (CrmContacts.tsx exports default)
-import PeoplePage from './pages/crm/contacts/PeoplePage';
+import { PeoplePage } from './pages/crm/contacts/PeoplePage';
 
 import CrmCompanies from './pages/crm/CrmCompanies';
 import CrmInteractions from './pages/crm/CrmInteractions';
