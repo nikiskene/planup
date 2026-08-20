@@ -18,6 +18,7 @@ import Notes from './pages/Notes';
 import Dues from './pages/Dues';
 import Shopping from './pages/Shopping';
 import Settings from './pages/Settings';
+import SettingsPage from './pages/settings/SettingsPage';
 
 // ✅ default import (CrmContacts.tsx exports default)
 import CrmContacts from './pages/crm/contacts/CrmContacts';
@@ -116,7 +117,7 @@ function App() {
                 path="/settings"
                 element={
                   <AppPage>
-                    <Settings />
+                    <SettingsPage><Settings /></SettingsPage>
                   </AppPage>
                 }
               />
