@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Plus, X, Save } from 'lucide-react';
 import { Database } from '../lib/types';
+import { createOfflineEntity, deleteOfflineEntity, loadOfflineCollection, newLocalEntityId, updateOfflineEntity } from '../lib/offline';
+import { useSync } from '../contexts/SyncContext';
 
 type Note = Database['public']['Tables']['notes']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -13,6 +15,7 @@ export default function Notes() {
   const { activeWorkspaceId } = useWorkspace();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { syncNow } = useSync();
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,14 +31,12 @@ export default function Notes() {
     if (!activeWorkspaceId) return;
 
     try {
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('workspace_id', activeWorkspaceId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setNotes(data || []);
+      const data = await loadOfflineCollection<Note>('notes', activeWorkspaceId, async () => {
+        const { data, error } = await supabase.from('notes').select('*').eq('workspace_id', activeWorkspaceId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+      });
+      setNotes(data.sort((a, b) => b.created_at.localeCompare(a.created_at)));
     } catch (error: any) {
       showToast(error.message || 'Failed to load notes', 'error');
     } finally {
@@ -47,14 +48,12 @@ export default function Notes() {
     if (!activeWorkspaceId) return;
 
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('workspace_id', activeWorkspaceId)
-        .order('name');
-
-      if (error) throw error;
-      setCategories(data || []);
+      const data = await loadOfflineCollection<Category>('categories', activeWorkspaceId, async () => {
+        const { data, error } = await supabase.from('categories').select('*').eq('workspace_id', activeWorkspaceId).order('name');
+        if (error) throw error;
+        return data || [];
+      });
+      setCategories(data.sort((a, b) => a.name.localeCompare(b.name)));
     } catch (error: any) {
       console.error('Failed to load categories', error);
     }
@@ -71,34 +70,33 @@ export default function Notes() {
 
     try {
       if (editingNote) {
-        const { error } = await supabase
-          .from('notes')
-          .update({
-            headline: formData.headline || null,
-            body: formData.body,
-            category_id: formData.category_id || null,
-          })
-          .eq('id', editingNote.id);
-
-        if (error) throw error;
-        showToast('Note updated', 'success');
+        await updateOfflineEntity('notes', editingNote, {
+          headline: formData.headline || null,
+          body: formData.body,
+          category_id: formData.category_id || null,
+        }, user.id);
+        showToast(navigator.onLine ? 'Note saved' : 'Note saved offline', 'success');
       } else {
-        const { error } = await supabase.from('notes').insert({
+        const now = new Date().toISOString();
+        await createOfflineEntity<Note>('notes', {
+          id: newLocalEntityId(),
           workspace_id: activeWorkspaceId,
           headline: formData.headline || null,
           body: formData.body,
           category_id: formData.category_id || null,
+          task_id: null,
           created_by: user.id,
-        });
-
-        if (error) throw error;
-        showToast('Note created', 'success');
+          created_at: now,
+          updated_at: now,
+        }, user.id);
+        showToast(navigator.onLine ? 'Note saved' : 'Note saved offline', 'success');
       }
 
       setFormData({ headline: '', body: '', category_id: '' });
       setEditingNote(null);
       setShowNewNote(false);
-      fetchNotes();
+      await syncNow();
+      await fetchNotes();
     } catch (error: any) {
       showToast(error.message || 'Failed to save note', 'error');
     }
@@ -114,15 +112,15 @@ export default function Notes() {
     setShowNewNote(true);
   };
 
-  const handleDelete = async (noteId: string) => {
+  const handleDelete = async (note: Note) => {
     if (!confirm('Are you sure you want to delete this note?')) return;
 
     try {
-      const { error } = await supabase.from('notes').delete().eq('id', noteId);
-
-      if (error) throw error;
-      showToast('Note deleted', 'success');
-      fetchNotes();
+      if (!user) return;
+      await deleteOfflineEntity('notes', note, user.id);
+      showToast(navigator.onLine ? 'Note deleted' : 'Deletion saved offline', 'success');
+      await syncNow();
+      await fetchNotes();
     } catch (error: any) {
       showToast(error.message || 'Failed to delete note', 'error');
     }
@@ -254,7 +252,7 @@ export default function Notes() {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(note.id)}
+                    onClick={() => handleDelete(note)}
                     className="text-sm text-red-600 hover:text-red-700 font-medium"
                   >
                     Delete

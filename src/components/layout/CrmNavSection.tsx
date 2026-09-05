@@ -35,8 +35,8 @@ export default function CrmNavSection({ items }: { items: NavItem[] }) {
         <div className="mt-1 space-y-1 pl-2">
           {items.map((item) => (
             <NavLink
-              key={item.path}
-              to={item.path}
+              key={item.href}
+              to={item.href}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
                   isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'

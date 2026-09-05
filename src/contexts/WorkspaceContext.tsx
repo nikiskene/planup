@@ -18,6 +18,9 @@ type Workspace =
 type WorkspaceMember =
   Database['public']['Tables']['workspace_members']['Row'];
 
+const WORKSPACES_CACHE_KEY = 'planup_cached_workspaces';
+const MEMBERSHIP_CACHE_KEY = 'planup_cached_membership';
+
 interface WorkspaceContextType {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
@@ -68,9 +71,10 @@ export function WorkspaceProvider({
 
   const userId = user?.id ?? null;
 
-  const [workspaces, setWorkspaces] = useState<
-    Workspace[]
-  >([]);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
+    try { return JSON.parse(localStorage.getItem(WORKSPACES_CACHE_KEY) || '[]'); }
+    catch { return []; }
+  });
 
   const [
     activeWorkspaceId,
@@ -79,8 +83,10 @@ export function WorkspaceProvider({
     return localStorage.getItem('active_workspace_id');
   });
 
-  const [membership, setMembership] =
-    useState<WorkspaceMember | null>(null);
+  const [membership, setMembership] = useState<WorkspaceMember | null>(() => {
+    try { return JSON.parse(localStorage.getItem(MEMBERSHIP_CACHE_KEY) || 'null'); }
+    catch { return null; }
+  });
 
   const [loading, setLoading] = useState(true);
 
@@ -223,6 +229,7 @@ export function WorkspaceProvider({
         (workspaceRows || []) as Workspace[];
 
       setWorkspaces(list);
+      localStorage.setItem(WORKSPACES_CACHE_KEY, JSON.stringify(list));
 
       /*
        * 4. Resolve active workspace.
@@ -289,12 +296,14 @@ export function WorkspaceProvider({
         if (error) throw error;
 
         setMembership(data);
+        if (data) localStorage.setItem(MEMBERSHIP_CACHE_KEY, JSON.stringify(data));
       } catch (error) {
         console.error(
           'Error fetching membership:',
           error,
         );
 
+        if (!navigator.onLine) return;
         setMembership(null);
       }
     },

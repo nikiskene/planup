@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { SyncProvider } from './contexts/SyncContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppPage from './components/AppPage';
 import ShoppingPage from './components/ShoppingPage';
@@ -48,7 +49,8 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <WorkspaceProvider>
-          <ToastProvider>
+          <SyncProvider>
+            <ToastProvider>
             <Routes>
               {/* Public */}
               <Route path="/auth" element={<Auth />} />
@@ -186,7 +188,8 @@ function App() {
               <Route path="/" element={<HomeRedirect />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </ToastProvider>
+            </ToastProvider>
+          </SyncProvider>
         </WorkspaceProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -6,8 +6,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { ArrowLeft, Trash2, UserRound, ExternalLink } from 'lucide-react';
 import { Database } from '../lib/types';
+import { createOfflineEntity, deleteOfflineEntity, getCachedEntity, loadOfflineCollection, newLocalEntityId, updateOfflineEntity } from '../lib/offline';
+import { useSync } from '../contexts/SyncContext';
 
-type Task = Database['public']['Tables']['tasks']['Row'];
+type Task = Database['public']['Tables']['tasks']['Row'] & { crm_contact_id?: string | null };
 type Category = Database['public']['Tables']['categories']['Row'];
 
 type CrmContactLite = {
@@ -32,6 +34,7 @@ export default function TaskDetail() {
   const { activeWorkspaceId, membership } = useWorkspace();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { syncNow } = useSync();
 
   const [task, setTask] = useState<Task | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -53,13 +56,17 @@ export default function TaskDetail() {
     time_estimate_min: 15,
     due_at: '',
     waiting_for: '',
-    energy_level: '' as Task['energy_level'],
+    energy_level: '' as '' | NonNullable<Task['energy_level']>,
     category_id: '',
   });
 
   const fetchCrmContact = useCallback(
     async (contactId: string) => {
       if (!activeWorkspaceId) return;
+      if (!navigator.onLine) {
+        setCrmContact(null);
+        return;
+      }
       setCrmLoading(true);
       try {
         const { data, error } = await supabase
@@ -95,23 +102,23 @@ export default function TaskDetail() {
 
       try {
         // categories for dropdown
-        const { data: cats, error: catsErr } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('workspace_id', activeWorkspaceId)
-          .order('name', { ascending: true });
-
-        if (catsErr) throw catsErr;
+        const cats = await loadOfflineCollection<Category>('categories', activeWorkspaceId, async () => {
+          const { data, error } = await supabase.from('categories').select('*').eq('workspace_id', activeWorkspaceId).order('name', { ascending: true });
+          if (error) throw error;
+          return data || [];
+        });
         if (!cancelled) setCategories(cats || []);
 
         if (!isNew && id) {
-          const { data, error } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('id', id)
-            .maybeSingle();
-
-          if (error) throw error;
+          let data = await getCachedEntity<Task>('tasks', id);
+          if (navigator.onLine) {
+            const rows = await loadOfflineCollection<Task>('tasks', activeWorkspaceId, async () => {
+              const { data, error } = await supabase.from('tasks').select('*').eq('workspace_id', activeWorkspaceId);
+              if (error) throw error;
+              return data || [];
+            });
+            data = rows.find((row) => row.id === id) || null;
+          }
 
           if (!data) {
             showToast('Task not found', 'error');
@@ -213,21 +220,25 @@ export default function TaskDetail() {
       };
 
       if (isNew) {
-        const { error } = await supabase.from('tasks').insert({
+        const now = new Date().toISOString();
+        await createOfflineEntity<Task>('tasks', {
+          id: newLocalEntityId(),
           ...taskData,
           created_by: user.id,
-        });
-
-        if (error) throw error;
-        showToast('Task created', 'success');
+          assigned_to: null,
+          created_at: now,
+          updated_at: now,
+        }, user.id);
+        await syncNow();
+        showToast(navigator.onLine ? 'Task saved' : 'Task saved offline', 'success');
         navigate('/tasks');
       } else {
         if (!id) throw new Error('Missing task id');
 
-        const { error } = await supabase.from('tasks').update(taskData).eq('id', id);
-
-        if (error) throw error;
-        showToast('Task updated', 'success');
+        if (!task) throw new Error('Task is not available on this device');
+        await updateOfflineEntity('tasks', task, taskData, user.id);
+        await syncNow();
+        showToast(navigator.onLine ? 'Task saved' : 'Task saved offline', 'success');
         navigate('/tasks');
       }
     } catch (error: any) {
@@ -246,10 +257,10 @@ export default function TaskDetail() {
     setSaving(true);
 
     try {
-      const { error } = await supabase.from('tasks').update({ status: 'done' }).eq('id', id);
-
-      if (error) throw error;
-      showToast('Task marked as done', 'success');
+      if (!task || !user) return;
+      await updateOfflineEntity('tasks', task, { status: 'done' }, user.id);
+      await syncNow();
+      showToast(navigator.onLine ? 'Task marked as done' : 'Completion saved offline', 'success');
       navigate('/tasks');
     } catch (error: any) {
       showToast(error?.message || 'Failed to update task', 'error');
@@ -265,10 +276,10 @@ export default function TaskDetail() {
     setSaving(true);
 
     try {
-      const { error } = await supabase.from('tasks').delete().eq('id', id);
-
-      if (error) throw error;
-      showToast('Task deleted', 'success');
+      if (!task || !user) return;
+      await deleteOfflineEntity('tasks', task, user.id);
+      await syncNow();
+      showToast(navigator.onLine ? 'Task deleted' : 'Deletion saved offline', 'success');
       navigate('/tasks');
     } catch (error: any) {
       showToast(error?.message || 'Failed to delete task', 'error');
@@ -481,7 +492,7 @@ export default function TaskDetail() {
             <select
               id="energy_level"
               value={formData.energy_level || ''}
-              onChange={(e) => setFormData({ ...formData, energy_level: e.target.value as Task['energy_level'] })}
+              onChange={(e) => setFormData({ ...formData, energy_level: e.target.value as typeof formData.energy_level })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">None</option>

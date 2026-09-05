@@ -1,5 +1,5 @@
 export type NavItem = {
-  path: string;
+  href: string;
   icon: any;
   label: string;
 };

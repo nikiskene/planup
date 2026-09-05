@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { Database } from '../lib/types';
+import { loadOfflineCollection } from '../lib/offline';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -63,50 +64,39 @@ export default function Tasks() {
   const fetchCategories = async () => {
     if (!activeWorkspaceId) return;
 
-    const { data, error } = await supabase
-      .from('categories')
-      .select('id,name')
-      .eq('workspace_id', activeWorkspaceId)
-      .order('name', { ascending: true });
-
-    if (error) throw error;
-    setCategories((data || []) as any);
+    const data = await loadOfflineCollection<Category>('categories', activeWorkspaceId, async () => {
+      const { data, error } = await supabase.from('categories').select('*').eq('workspace_id', activeWorkspaceId).order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    });
+    setCategories(data.map(({ id, name }) => ({ id, name })));
   };
 
   const fetchTasks = async () => {
     if (!activeWorkspaceId) return;
 
     try {
-      let query = supabase
-        .from('tasks')
-        .select('*')
-        .eq('workspace_id', activeWorkspaceId);
-
-      if (statusFilter === 'next') {
-        query = query.eq('priority', 'P0').neq('status', 'done');
-      } else if (statusFilter === 'waiting') {
-        query = query.in('priority', ['P1', 'P2']).neq('status', 'done');
-      } else if (statusFilter === 'scheduled') {
-        query = query.not('due_at', 'is', null).neq('status', 'done');
-      } else if (statusFilter) {
-        query = query.eq('status', statusFilter);
-      }
-
-      if (categoryFilter) {
-        query = query.eq('category_id', categoryFilter);
-      }
-
-      if (searchQuery) {
-        query = query.ilike('title', `%${searchQuery}%`);
-      }
-
-      const { data, error } = await query
-        .order('priority', { ascending: true })
-        .order('due_at', { ascending: true, nullsFirst: false })
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-      setTasks(data || []);
+      const data = await loadOfflineCollection<Task>('tasks', activeWorkspaceId, async () => {
+        const { data, error } = await supabase.from('tasks').select('*').eq('workspace_id', activeWorkspaceId);
+        if (error) throw error;
+        return data || [];
+      });
+      const filtered = data.filter((task) => {
+        const statusMatches = statusFilter === 'next'
+          ? task.priority === 'P0' && task.status !== 'done'
+          : statusFilter === 'waiting'
+            ? ['P1', 'P2'].includes(task.priority) && task.status !== 'done'
+            : statusFilter === 'scheduled'
+              ? Boolean(task.due_at) && task.status !== 'done'
+              : task.status === statusFilter;
+        return statusMatches
+          && (!categoryFilter || task.category_id === categoryFilter)
+          && (!searchQuery || task.title.toLowerCase().includes(searchQuery.toLowerCase()));
+      });
+      filtered.sort((a, b) => a.priority.localeCompare(b.priority)
+        || (a.due_at || '9999').localeCompare(b.due_at || '9999')
+        || b.updated_at.localeCompare(a.updated_at));
+      setTasks(filtered);
     } catch (error: any) {
       showToast(error?.message || 'Failed to load tasks', 'error');
     } finally {

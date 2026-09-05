@@ -5,6 +5,7 @@ import WorkspaceMenu from './layout/WorkspaceMenu';
 import SidebarNav from './layout/SidebarNav';
 import MobileNav from './layout/MobileNav';
 import { HOME_NAV_ITEMS, WORK_NAV_ITEMS } from './layout/navConfig';
+import SyncStatus from './SyncStatus';
 
 interface LayoutProps { children: ReactNode }
 
@@ -20,7 +21,10 @@ export default function Layout({ children }: LayoutProps) {
               <div className="text-[11px] leading-tight text-gray-400">Less input. More action.</div>
             </div>
           </div>
-          <WorkspaceMenu />
+          <div className="flex items-center gap-2">
+            <SyncStatus />
+            <WorkspaceMenu />
+          </div>
         </div>
       </header>
 
