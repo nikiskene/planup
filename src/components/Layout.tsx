@@ -11,11 +11,11 @@ interface LayoutProps { children: ReactNode }
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0">
-      <header className="sticky top-0 z-40 h-[57px] border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/50 pb-20 lg:pb-0">
+      <header className="sticky top-0 z-40 h-[57px] border-b border-white/70 bg-white/85 shadow-sm shadow-slate-900/[0.03] backdrop-blur-xl">
         <div className="flex h-full items-center justify-between px-4 sm:px-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gray-950 text-sm font-semibold text-white">EP</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-slate-950 to-blue-700 text-sm font-semibold text-white shadow-md">EP</div>
             <div>
               <div className="text-sm font-semibold leading-tight text-gray-950">Efficiency Planner</div>
               <div className="text-[11px] leading-tight text-gray-400">Less input. More action.</div>
