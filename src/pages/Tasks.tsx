@@ -82,13 +82,7 @@ export default function Tasks() {
         return data || [];
       });
       const filtered = data.filter((task) => {
-        const statusMatches = statusFilter === 'next'
-          ? task.priority === 'P0' && task.status !== 'done'
-          : statusFilter === 'waiting'
-            ? ['P1', 'P2'].includes(task.priority) && task.status !== 'done'
-            : statusFilter === 'scheduled'
-              ? Boolean(task.due_at) && task.status !== 'done'
-              : task.status === statusFilter;
+        const statusMatches = task.status === statusFilter;
         return statusMatches
           && (!categoryFilter || task.category_id === categoryFilter)
           && (!searchQuery || task.title.toLowerCase().includes(searchQuery.toLowerCase()));

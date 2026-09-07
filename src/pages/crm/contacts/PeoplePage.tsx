@@ -30,7 +30,7 @@ export function PeoplePage() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<Form>(emptyForm);
   const statusTabs = useMemo(() => [...statuses.map((status) => ({ value: status.key, label: status.name })),
-    { value: 'unassigned', label: 'Unassigned' }, { value: 'all', label: 'All' }], [statuses]);
+    { value: 'unassigned', label: 'No status' }, { value: 'all', label: 'All' }], [statuses]);
   const rows = contacts as unknown as ContactRow[];
   const activityRows = useMemo(() => rows.filter((row) => row.is_active === (activityTab === 'active')), [rows, activityTab]);
   const counts = useMemo(() => Object.fromEntries(statusTabs.map((tab) => [tab.value, activityRows.filter((row) => tab.value === 'all' || (tab.value === 'unassigned' ? !row.lead_status : row.lead_status === tab.value)).length])), [activityRows, statusTabs]);

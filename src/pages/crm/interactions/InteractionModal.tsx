@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { todayKey } from '../../home/attention';
 import { X } from 'lucide-react';
 import type { CompanyOption, ContactOption, InteractionRow } from './types';
 import { contactLabel } from './types';
@@ -12,6 +13,7 @@ type Props = {
   initial?: Partial<InteractionRow>;
   onClose: () => void;
   onSave: (payload: {
+    activity_kind: string | null;
     contact_id: string | null;
     company_id: string | null;
     occurred_at: string | null;
@@ -50,7 +52,7 @@ const CHANNEL_OPTIONS = [
 
 type ChannelValue = (typeof CHANNEL_OPTIONS)[number]['value'];
 
-function coerceChannel(v: any): ChannelValue {
+function coerceChannel(v: unknown): ChannelValue {
   if (v === 'email' || v === 'phone' || v === 'text' || v === 'social' || v === 'website') {
     return v;
   }
@@ -65,7 +67,7 @@ const NEXT_ACTION_OPTIONS = [
 
 type NextActionValue = (typeof NEXT_ACTION_OPTIONS)[number]['value'];
 
-function coerceNextAction(v: any): NextActionValue {
+function coerceNextAction(v: unknown): NextActionValue {
   if (v === 'reconnect' || v === 'none' || v === 'disconnect') return v;
   return 'none';
 }
@@ -80,6 +82,7 @@ export default function InteractionModal({
   onClose,
   onSave,
 }: Props) {
+  const [activityKind, setActivityKind] = useState(initial?.id ? initial.activity_kind || '' : 'contact');
   const [contactId, setContactId] = useState(initial?.contact_id || '');
   const [companyId, setCompanyId] = useState(initial?.company_id || '');
   const [occurredAt, setOccurredAt] = useState(toDateInput(initial?.occurred_at || null));
@@ -94,9 +97,10 @@ export default function InteractionModal({
   useEffect(() => {
     if (!open) return;
 
+    setActivityKind(initial?.id ? initial.activity_kind || '' : 'contact');
     setContactId(initial?.contact_id || '');
     setCompanyId(initial?.company_id || '');
-    setOccurredAt(toDateInput(initial?.occurred_at || null));
+    setOccurredAt(toDateInput(initial?.occurred_at || null) || todayKey());
     setChannel(coerceChannel(initial?.channel));
     setType(initial?.type || '');
     setItTitle(initial?.title || '');
@@ -116,8 +120,8 @@ export default function InteractionModal({
       (type || '').trim() ||
       (occurredAt || '').trim();
 
-    return Boolean(hasSomething);
-  }, [itTitle, note, link, contactId, companyId, type, occurredAt]);
+    return Boolean(hasSomething && contactId && occurredAt && (nextAction !== 'reconnect' || (reconnectInDays.trim() !== '' && Number.isInteger(Number(reconnectInDays)) && Number(reconnectInDays) >= 0)));
+  }, [itTitle, note, link, contactId, companyId, type, occurredAt, nextAction, reconnectInDays]);
 
   // Prevent background scroll while open (mobile especially)
   useEffect(() => {
@@ -160,6 +164,7 @@ export default function InteractionModal({
                 if (!canSubmit || saving) return;
 
                 await onSave({
+                  activity_kind: activityKind || null,
                   contact_id: contactId.trim() ? contactId : null,
                   company_id: companyId.trim() ? companyId : null,
                   occurred_at: occurredAt ? new Date(occurredAt).toISOString() : null,
@@ -173,6 +178,13 @@ export default function InteractionModal({
                 });
               }}
             >
+              <label className="block text-sm font-medium text-gray-700">Activity
+                <select value={activityKind} onChange={e => setActivityKind(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2">
+                  {initial?.id && <option value="">Unclassified historical activity</option>}
+                  <option value="contact">Actual contact — sent, received or spoke</option><option value="attempt">Unanswered attempt</option><option value="note">Internal note</option>
+                </select>
+              </label>
+              <p className="text-xs text-gray-500">Only actual contact resets the Home reminder. Choose Reconnect to create a follow-up task.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
@@ -212,6 +224,8 @@ export default function InteractionModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                   <input
                     type="date"
+                    required
+                    max={todayKey()}
                     value={occurredAt}
                     onChange={(e) => setOccurredAt(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -322,7 +336,7 @@ export default function InteractionModal({
 
               {!canSubmit ? (
                 <p className="text-xs text-gray-500">
-                  Add at least a title, note, link, contact, company, type, or date.
+                  Choose a contact and date. Reconnect also needs a whole number of days, zero or greater.
                 </p>
               ) : null}
             </form>

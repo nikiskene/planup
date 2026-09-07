@@ -1,4 +1,5 @@
 export type InteractionRow = {
+  activity_kind?: 'contact' | 'attempt' | 'note' | null;
   id: string;
   workspace_id: string;
   contact_id: string | null;

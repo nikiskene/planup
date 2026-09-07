@@ -1,6 +1,8 @@
 // src/pages/settings/RelationshipStatusesSettings.tsx
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, LockKeyhole, Pencil, Trash2, UsersRound, X } from 'lucide-react';
+import { crm } from '../home/data';
+import { modeFor } from '../home/attention';
 import { supabase } from '../../lib/supabase';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -13,6 +15,7 @@ export default function RelationshipStatusesSettings() {
   const { statuses, loadingStatuses, reloadStatuses } = useLeadStatuses(activeWorkspaceId, showToast);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [newName, setNewName] = useState('');
+  const [newMode, setNewMode] = useState('normal');
   const [editing, setEditing] = useState<LeadStatusOption | null>(null);
   const [editingName, setEditingName] = useState('');
   const [fallbackKey, setFallbackKey] = useState('connected');
@@ -35,9 +38,18 @@ export default function RelationshipStatusesSettings() {
     if (!activeWorkspaceId || !canManage || !name) return;
     setBusy(true);
     // @ts-expect-error catalog table is newer than the generated database types.
-    const { error } = await supabase.from('crm_lead_statuses').insert({ workspace_id: activeWorkspaceId, name });
+    const { error } = await supabase.from('crm_lead_statuses').insert({ workspace_id: activeWorkspaceId, name, home_attention_mode: newMode });
     if (error) showToast(error.message || 'Failed to add relationship status', 'error');
     else { setNewName(''); showToast('Relationship status added', 'success'); await reloadStatuses(); }
+    setBusy(false);
+  };
+  const changeMode = async (status: LeadStatusOption, mode: string) => {
+    if (!activeWorkspaceId || !canManage || status.is_system || !mode) return;
+    setBusy(true);
+    const { error } = await crm.from('crm_lead_statuses').update({ home_attention_mode: mode })
+      .eq('workspace_id', activeWorkspaceId).eq('id', status.id).select('id').single();
+    if (error) showToast(error.message || 'Could not save Home rule', 'error');
+    else { showToast('Home rule saved', 'success'); await reloadStatuses(); }
     setBusy(false);
   };
   const save = async () => {
@@ -69,10 +81,10 @@ export default function RelationshipStatusesSettings() {
     {loadingStatuses ? <p>Loading relationship statuses…</p> : <div className="mb-6 space-y-2">{statuses.map((status) => {
       const isEditing = editing?.id === status.id;
       return <div key={status.id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
-        <div className="min-w-0 flex-1">{isEditing ? <input autoFocus value={editingName} onChange={(event) => setEditingName(event.target.value)} className="w-full rounded-lg border border-gray-300 px-2 py-1 text-sm" /> : <><div className="flex items-center gap-2"><p className="truncate text-sm font-medium text-gray-900">{status.name}</p>{status.is_system ? <LockKeyhole size={13} className="text-gray-400" /> : null}</div><p className="text-xs text-gray-500">{counts[status.key] || 0} people</p></>}</div>
+        <div className="min-w-0 flex-1">{isEditing ? <input autoFocus value={editingName} onChange={(event) => setEditingName(event.target.value)} className="w-full rounded-lg border border-gray-300 px-2 py-1 text-sm" /> : <><div className="flex items-center gap-2"><p className="truncate text-sm font-medium text-gray-900">{status.name}</p>{status.is_system ? <LockKeyhole size={13} className="text-gray-400" /> : null}</div><p className="text-xs text-gray-500">{counts[status.key] || 0} people</p><label className="mt-2 block text-xs text-gray-600">Home reminders<select aria-label={`Home reminders for ${status.name}`} disabled={!canManage || status.is_system || busy} value={modeFor(status) || ''} onChange={e => void changeMode(status, e.target.value)} className="ml-2 rounded border bg-white px-2 py-1"><option value="" disabled>Choose a rule</option><option value="normal">30-day reminders</option><option value="deferred">Only scheduled follow-ups</option><option value="excluded">Exclude (closed / lost)</option></select></label></>}</div>
         {canManage && !status.is_system ? <div className="flex gap-2">{isEditing ? <><button onClick={save} disabled={busy} className="rounded-lg border bg-white p-2"><Check size={16} /></button><button onClick={() => setEditing(null)} className="rounded-lg border bg-white p-2"><X size={16} /></button></> : <><button onClick={() => { setEditing(status); setEditingName(status.name); }} className="rounded-lg border bg-white p-2"><Pencil size={16} /></button><button onClick={() => remove(status)} disabled={busy} className="rounded-lg border bg-white p-2"><Trash2 size={16} /></button></>}</div> : null}
       </div>;
     })}</div>}
-    {canManage ? <form onSubmit={add} className="flex max-w-md gap-2 border-t pt-5"><input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="New relationship status" className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm" /><button disabled={busy || !newName.trim()} className="rounded-lg bg-gray-900 px-4 py-2 font-medium text-white disabled:opacity-50">Add</button></form> : <p className="text-sm text-gray-500">You don’t have permission to manage relationship statuses.</p>}
+    {canManage ? <form onSubmit={add} className="flex flex-wrap gap-2 border-t pt-5"><input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="New relationship status" className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm" /><select aria-label="Home rule for new status" value={newMode} onChange={e => setNewMode(e.target.value)} className="rounded-lg border px-2 py-2 text-sm"><option value="normal">30-day reminders</option><option value="deferred">Only scheduled follow-ups</option><option value="excluded">Exclude (closed / lost)</option></select><button disabled={busy || !newName.trim()} className="rounded-lg bg-gray-900 px-4 py-2 font-medium text-white disabled:opacity-50">Add</button></form> : <p className="text-sm text-gray-500">You don’t have permission to manage relationship statuses.</p>}
   </section>;
 }
