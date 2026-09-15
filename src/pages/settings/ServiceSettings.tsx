@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
@@ -24,6 +24,17 @@ async function billingRequest(body: Record<string, string>) {
   }
   return data;
 }
+async function emailRequest(body: Record<string, string>) {
+  const { data, error } = await supabase.functions.invoke('wrxs-email-capture', { body });
+  if (error) {
+    let message = 'Unable to save this wrxs ID. Please try again.';
+    if ('context' in error && error.context instanceof Response) {
+      try { const result = await error.context.json(); if (typeof result.error === 'string') message = result.error; } catch { /* Use the safe fallback. */ }
+    }
+    throw new Error(message);
+  }
+  return data as { address: string; enabled: boolean; setup_required: boolean };
+}
 const client = supabase as unknown as SupabaseClient<ServiceDatabase>;
 
 export default function ServiceSettings() {
@@ -37,6 +48,10 @@ export default function ServiceSettings() {
   const [runtime, setRuntime] = useState<Runtime | null>(null);
   const [busy, setBusy] = useState(false);
   const [billingError, setBillingError] = useState('');
+  const [emailAlias, setEmailAlias] = useState('');
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailNotice, setEmailNotice] = useState('');
   const isAdmin = membership?.role === 'admin' || membership?.role === 'owner';
   async function manage(action: 'checkout' | 'portal' | 'refresh', interval?: string) {
     if (!activeWorkspaceId || busy) return;
@@ -53,6 +68,18 @@ export default function ServiceSettings() {
     finally { setBusy(false); }
   }
   const canManage = membership?.role === 'admin' || membership?.role === 'owner' || Boolean(membership?.can_manage_members);
+  async function claimEmailId(event: FormEvent) {
+    event.preventDefault();
+    if (!activeWorkspaceId || emailBusy) return;
+    setEmailBusy(true); setEmailError(''); setEmailNotice('');
+    try {
+      const result = await emailRequest({ workspace_id: activeWorkspaceId, alias: emailAlias });
+      setEmailAlias(result.address.replace('@wrxs.cc', ''));
+      setEmailNotice(`${result.address} is reserved for this workspace. Receiving will switch on after wrxs completes the Postmark connection.`);
+      setAttempt(value => value + 1);
+    } catch (cause) { setEmailError(cause instanceof Error ? cause.message : 'Unable to save this wrxs ID.'); }
+    finally { setEmailBusy(false); }
+  }
   useEffect(() => {
     let cancelled = false;
     setLoading(true); setError(''); setRoutes([]); setSubscriptions([]); setRuntime(null);
@@ -99,7 +126,18 @@ export default function ServiceSettings() {
         {billingError && <div className="mt-3"><p role="alert" className="text-red-700">{billingError}</p><button onClick={() => { setBillingError(''); setAttempt(value => value + 1); }} className="text-blue-700">Refresh settings</button></div>}
       </div>
       <div><h3 className="font-medium">Email capture</h3>
-        {!canManage ? <p className="mt-1 text-gray-500">Ask a workspace manager about your email connection.</p> : routes.some(route => route.enabled) ? <ul className="mt-2">{routes.filter(route => route.enabled).map(route => <li key={`${route.local_part}@${route.domain}`}><span className="break-all font-medium">{route.local_part}@{route.domain}</span></li>)}</ul> : <p className="mt-1 text-gray-500">No new wrxs email address is enabled for this workspace. Existing email connections continue through their current setup. Personal Gmail connection is not available yet.</p>}
+        {!canManage ? <p className="mt-1 text-gray-500">Ask a workspace manager about your email connection.</p> : <>
+          {routes.length > 0 && <p className="mt-1 text-gray-700"><span className="break-all font-medium">{routes[0].local_part}@{routes[0].domain}</span>{routes[0].enabled ? ' is ready for BCC capture.' : ' is reserved and awaiting the receiving connection.'}</p>}
+          <p className="mt-2 text-gray-500">Choose a short, permanent wrxs ID. This is a capture-only address: BCC it from your confirmed wrxs account email to add recipients and the email history to this workspace’s CRM. It cannot send or receive ordinary correspondence.</p>
+          <form onSubmit={claimEmailId} className="mt-3 flex max-w-lg flex-wrap gap-2">
+            <label className="sr-only" htmlFor="wrxs-email-id">wrxs email ID</label>
+            <div className="flex min-w-0 flex-1 rounded-xl border border-gray-300 bg-white focus-within:ring-2 focus-within:ring-slate-900"><input id="wrxs-email-id" value={emailAlias} onChange={event => setEmailAlias(event.target.value.toLowerCase())} placeholder="your-name" maxLength={30} pattern="[a-z0-9][a-z0-9.-]{0,28}[a-z0-9]" required className="min-w-0 flex-1 rounded-l-xl px-3 py-2 outline-none" /><span className="rounded-r-xl bg-gray-50 px-3 py-2 text-gray-500">@wrxs.cc</span></div>
+            <button disabled={emailBusy} className="rounded-xl border border-slate-950 px-4 py-2 font-medium disabled:opacity-50">{emailBusy ? 'Saving…' : routes.length ? 'Change ID' : 'Reserve ID'}</button>
+          </form>
+          <p className="mt-2 text-xs text-gray-500">Use lowercase letters, numbers, dots and hyphens. IDs such as support and billing are reserved.</p>
+          {emailNotice && <p role="status" className="mt-2 text-blue-700">{emailNotice}</p>}
+          {emailError && <p role="alert" className="mt-2 text-red-700">{emailError}</p>}
+        </>}
       </div>
     </div>}
   </section>;

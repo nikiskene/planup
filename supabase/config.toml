@@ -8,3 +8,8 @@ verify_jwt = false
 # Stripe has no Supabase JWT; the handler validates raw-body HMAC signatures.
 [functions.wrxs-stripe-webhook]
 verify_jwt = false
+
+# This function verifies browser identity itself and separately authenticates
+# inbound provider requests with WRXS_POSTMARK_INBOUND_TOKEN.
+[functions.wrxs-email-capture]
+verify_jwt = false

@@ -48,5 +48,10 @@ try {
  const enabled=await db.query('select count(*)::int as count from public.wrxs_price_catalog where plan_key=\'standard\' and checkout_enabled');
  if(enabled.rows[0].count!==2) throw new Error('Checkout activation did not enable both approved plans');
  console.log('09_enable_checkout.sql PASS');
+ await db.exec(fs.readFileSync(dir+'10_workspace_email_capture.sql','utf8'));
+ const routes=await db.query("select domain, enabled, column_default from public.wrxs_email_routes join information_schema.columns on table_schema='public' and table_name='wrxs_email_routes' and column_name='local_part' limit 1");
+ if(routes.rows[0].domain!=='wrxs.cc' || routes.rows[0].enabled || routes.rows[0].column_default!==null) throw new Error('Email capture route migration did not preserve its inactive, explicit-alias boundary');
+ await db.exec(fs.readFileSync(dir+'10_workspace_email_capture_verify.sql','utf8'));
+ console.log('10_workspace_email_capture.sql and verification PASS');
 
 } catch(e){ console.error(e.message); if(e.query)console.error(e.query.slice(-1800));process.exitCode=1;}finally{await db.close();}
