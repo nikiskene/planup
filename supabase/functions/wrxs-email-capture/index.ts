@@ -9,6 +9,7 @@ const base = (Deno.env.get('SUPABASE_URL') || '').replace(/\/$/, '');
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const inboundToken = Deno.env.get('WRXS_POSTMARK_INBOUND_TOKEN') || '';
+const captureEnabled = Deno.env.get('WRXS_EMAIL_CAPTURE_ENABLED') === 'true';
 
 function response(body: Json, status = 200, origin?: string | null) {
   const allowed = new Set(['https://wrxs.cc', 'https://iacy.netlify.app']);
@@ -46,12 +47,12 @@ async function configure(req: Request, body: Json, origin: string | null) {
     if (collision[0] && collision[0].workspace_id !== workspace) return response({ error: 'That wrxs ID is unavailable. Choose another one.' }, 409, origin);
     let route = existing[0];
     if (route) {
-      await rest(`wrxs_email_routes?id=eq.${route.id}`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ local_part: alias, domain: 'wrxs.cc', enabled: false }) });
+      await rest(`wrxs_email_routes?id=eq.${route.id}`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ local_part: alias, domain: 'wrxs.cc', enabled: captureEnabled }) });
     } else {
-      const rows = await rest<Route[]>('wrxs_email_routes', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ workspace_id: workspace, created_by: user.id, local_part: alias, domain: 'wrxs.cc', enabled: false }) }); route = rows[0];
+      const rows = await rest<Route[]>('wrxs_email_routes', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ workspace_id: workspace, created_by: user.id, local_part: alias, domain: 'wrxs.cc', enabled: captureEnabled }) }); route = rows[0];
     }
     await rest('wrxs_email_senders', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ workspace_id: workspace, user_id: user.id, email: user.email, verified_at: new Date().toISOString(), verification_method: 'confirmed_account', revoked_at: null }) });
-    return response({ address: `${alias}@wrxs.cc`, enabled: false, setup_required: true }, 200, origin);
+    return response({ address: `${alias}@wrxs.cc`, enabled: captureEnabled, setup_required: !captureEnabled }, 200, origin);
   } catch (e) { const code = e instanceof Error ? e.message : ''; return response({ error: code === 'confirm_email' ? 'Confirm your wrxs account email first.' : code === 'forbidden' ? 'Workspace administrator required.' : 'Unable to save this wrxs ID.' }, code === 'unauthorized' ? 401 : code === 'forbidden' ? 403 : 503, origin); }
 }
 async function inbound(req: Request) {
