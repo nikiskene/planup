@@ -37,5 +37,11 @@ try {
  for(let run=0;run<2;run++) await db.exec(fs.readFileSync(dir+'07_billing_runtime.sql','utf8'));
  await db.exec(fs.readFileSync(path.join(here,'billing.sql'),'utf8'));
  console.log('07_billing_runtime.sql, rerun, and billing authorization/lease checks PASS');
+ await db.exec("insert into auth.users(id,email,email_confirmed_at) values('f631a75e-e681-4188-ae63-756449d0dceb','niki@example.test',now()); insert into public.profiles(id,email) values('f631a75e-e681-4188-ae63-756449d0dceb','niki@example.test'); insert into public.workspaces(id,name,created_by) values('ed0d87eb-2ec0-4ca8-8e2d-92d65b305c4f','Niki Skene','f631a75e-e681-4188-ae63-756449d0dceb'); insert into public.workspace_members(workspace_id,user_id,role,only_shopping,shopping_only) values('ed0d87eb-2ec0-4ca8-8e2d-92d65b305c4f','f631a75e-e681-4188-ae63-756449d0dceb','admin',false,false);");
+ for(let run=0;run<2;run++) await db.exec(fs.readFileSync(dir+'08_niki_founder_access.sql','utf8'));
+ await db.exec("set role authenticated; select set_config('request.jwt.claim.sub','f631a75e-e681-4188-ae63-756449d0dceb',false); do $$ begin if not public.wrxs_has_active_access('ed0d87eb-2ec0-4ca8-8e2d-92d65b305c4f') then raise exception 'Founder did not have permanent access'; end if; end $$; reset role;");
+ const founder=await db.query("select count(*)::int as count, bool_and(expires_at is null) as permanent from public.wrxs_access_grants where workspace_id='ed0d87eb-2ec0-4ca8-8e2d-92d65b305c4f' and reason='founder'");
+ if(founder.rows[0].count!==1 || !founder.rows[0].permanent) throw new Error('Founder grant was not permanent or rerunnable');
+ console.log('08_niki_founder_access.sql and rerun PASS');
 
 } catch(e){ console.error(e.message); if(e.query)console.error(e.query.slice(-1800));process.exitCode=1;}finally{await db.close();}
