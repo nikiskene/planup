@@ -39,11 +39,12 @@ export default function Landing() {
             </div>
             <p className="mt-4 text-xs text-white/70">Create a workspace, then choose monthly or annual billing in Settings.</p>
           </div>
-          <div className="rounded-3xl border border-white/30 bg-white/95 p-6 text-slate-950 shadow-xl shadow-black/20 sm:p-8" aria-label="Illustrative workspace preview">
-            <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">A clearer today</h2><span className="text-xs text-slate-400">Example workspace</span></div>
-            <p className="mb-7 mt-1 text-sm text-slate-500">A few things worth your attention.</p>
-            {['Send the project proposal', 'Follow up with a new contact', 'Turn a meeting note into a task'].map((item, i) => <div key={item} className="flex items-center gap-3 border-t border-stone-100 py-5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-medium text-blue-700">{i + 1}</span><span className="text-sm">{item}</span></div>)}
-            <div className="mt-4 rounded-2xl bg-stone-50 p-4 text-sm leading-relaxed text-slate-500">Work and life, with enough space for both.</div>
+          <div className="rounded-3xl border border-white/25 bg-slate-950/50 p-5 shadow-xl shadow-black/20 backdrop-blur-sm sm:p-6" aria-label="How wrxs works">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">How it works</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight">One place to turn input into action.</h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
+              {[['Capture', 'Tasks, notes, leads and email.'], ['Focus', 'See what needs attention today.'], ['Move', 'Keep the next step close to the work.']].map(([label, text], index) => <div key={label} className="rounded-2xl border border-white/15 bg-white/10 p-4"><span className="text-xs font-semibold text-blue-200">0{index + 1}</span><h3 className="mt-2 font-medium">{label}</h3><p className="mt-1 text-sm leading-5 text-white/70">{text}</p></div>)}
+            </div>
           </div>
         </section>
       </div>

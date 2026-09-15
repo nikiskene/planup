@@ -16,11 +16,12 @@ export function BrandBackground() {
   const [index, setIndex] = useState(0);
   useEffect(() => {
     if (backgroundImages.length < 2) return;
+    backgroundImages.forEach((url) => { const image = new Image(); image.src = url; });
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let timer: ReturnType<typeof setInterval> | undefined;
     const schedule = () => {
       if (timer) clearInterval(timer);
-      if (!reducedMotion.matches) timer = setInterval(() => setIndex(value => (value + 1) % backgroundImages.length), 12000);
+      if (!reducedMotion.matches) timer = setInterval(() => setIndex(value => (value + 1) % backgroundImages.length), 7000);
     };
     schedule();
     reducedMotion.addEventListener('change', schedule);
