@@ -37,7 +37,7 @@ export default function Landing() {
               <Link to={user ? '/app' : '/auth?mode=signup'} className="inline-flex items-center gap-2 rounded-full bg-blue-700 px-6 py-3 font-medium text-white hover:bg-blue-800">{user ? 'Open your workspace' : 'Create an account'}<ArrowRight size={18} /></Link>
               <a href="#features" className="text-sm font-medium">Explore the tools ↓</a>
             </div>
-            <p className="mt-4 text-xs text-white/70">Public launch in preparation. Subscription checkout is not open yet.</p>
+            <p className="mt-4 text-xs text-white/70">Create a workspace, then choose monthly or annual billing in Settings.</p>
           </div>
           <div className="rounded-3xl border border-white/30 bg-white/95 p-6 text-slate-950 shadow-xl shadow-black/20 sm:p-8" aria-label="Illustrative workspace preview">
             <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">A clearer today</h2><span className="text-xs text-slate-400">Example workspace</span></div>
@@ -59,8 +59,8 @@ export default function Landing() {
           <div className="rounded-3xl border border-stone-200 p-7"><h3 className="font-semibold">Email capture is coming to more workspaces</h3><p className="mt-3 text-sm leading-7 text-slate-600">We are preparing workspace-specific email capture for contact and conversation history. New email addresses and personal Gmail connections are not available yet. Your workspace settings show when an email route has actually been enabled.</p></div>
         </section>
         <section id="pricing" className="bg-slate-950 px-6 py-20 text-white">
-          <div className="mx-auto max-w-4xl"><h2 className="text-center text-3xl font-semibold tracking-tight">One plan. Choose your rhythm.</h2><p className="mt-4 text-center text-slate-400">Planned subscription pricing in US dollars. Checkout opens after launch setup.</p>
-            <div className="mt-10 grid gap-5 sm:grid-cols-2">{[{ label: 'Monthly', amount: '4', interval: 'month', detail: 'Pay month by month.' }, { label: 'Annual', amount: '40', interval: 'year', detail: 'Save $8 compared with 12 monthly payments.' }].map(plan => <div key={plan.label} className="rounded-3xl border border-slate-700 p-8"><h3 className="text-lg font-medium">{plan.label}</h3><p className="mt-5"><span className="text-5xl font-semibold">${plan.amount}</span><span className="text-slate-400"> / {plan.interval}</span></p><p className="mt-4 text-sm text-slate-400">{plan.detail}</p><p className="mt-7 flex gap-2 text-sm"><Check size={18} /> All core workspace tools</p><p className="mt-7 rounded-xl bg-white/10 px-4 py-3 text-center text-sm text-slate-300">Subscriptions coming soon</p></div>)}</div>
+          <div className="mx-auto max-w-4xl"><h2 className="text-center text-3xl font-semibold tracking-tight">One plan. Choose your rhythm.</h2><p className="mt-4 text-center text-slate-400">One subscription covers a workspace. Prices are in US dollars.</p>
+            <div className="mt-10 grid gap-5 sm:grid-cols-2">{[{ label: 'Monthly', amount: '4', interval: 'month', detail: 'Pay month by month.' }, { label: 'Annual', amount: '40', interval: 'year', detail: 'Save $8 compared with 12 monthly payments.' }].map(plan => <div key={plan.label} className="rounded-3xl border border-slate-700 p-8"><h3 className="text-lg font-medium">{plan.label}</h3><p className="mt-5"><span className="text-5xl font-semibold">${plan.amount}</span><span className="text-slate-400"> / {plan.interval}</span></p><p className="mt-4 text-sm text-slate-400">{plan.detail}</p><p className="mt-7 flex gap-2 text-sm"><Check size={18} /> All core workspace tools</p><Link to={user ? '/settings' : '/auth?mode=signup'} className="mt-7 block rounded-xl bg-white px-4 py-3 text-center text-sm font-medium text-slate-950">{user ? 'Choose in Settings' : 'Get started'}</Link></div>)}</div>
           </div>
         </section>
       </main>
