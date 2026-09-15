@@ -4,7 +4,7 @@
 
 Authenticated `/qr` route through AppPage, existing desktop/mobile navigation, and the shopping-only route guard. Eight static QR types: Website, Text, Email, Phone, WhatsApp, Wi-Fi, Contact, Event. Debounced preview; 1024px PNG and genuine SVG export; filename sanitization; colors, margin, error correction and contrast warning; supported-browser image/link copy and file sharing.
 
-Saved records support workspace ownership, open/edit/rename, duplicate, download from the editor, and confirmed deletion. Saves are explicit, online-only, and use an updated_at condition to avoid silently overwriting another editor. The migration must be applied before saving works. The existing Tasks/Notes offline queue is unchanged.
+Saved records support workspace ownership, open/edit/rename, duplicate, download from the editor, and confirmed deletion. Saves are explicit, online-only, and use an updated_at condition to avoid silently overwriting another editor. The QR migration is now applied to the live PlanUp Supabase project. The existing Tasks/Notes offline queue is unchanged.
 
 Local content generation and downloads make no network requests. Unsaved inputs remain in React state. Existing application authentication and workspace loading still use the established application infrastructure. Wi-Fi credentials are uploaded only when the user saves that QR and then are visible to authorized members of that workspace.
 
@@ -38,11 +38,11 @@ qrcode 1.5.4 is the sole generation library; @types/qrcode 1.5.6 provides develo
 
 Migration creates public.qr_codes, a workspace/creation index, membership-based SELECT/INSERT/UPDATE/DELETE policies excluding only_shopping users, creator validation, immutable ownership, and a server-managed update timestamp. Anonymous access is not granted. No image binaries are stored. Optional source_type/source_id reserve future object associations.
 
-Deployment status: migration prepared only, not executed. Live schema and effective RLS behavior have not been verified. Before applying, verify the deployed workspace_members.only_shopping column and membership policies. After applying, verify normal member CRUD, cross-workspace denial, shopping-only denial, anonymous denial, and stale-update rejection with representative accounts.
+Deployment status: migration applied to the live PlanUp project on 2026-09-15 and recorded in Supabase migration history. Live workspace schema and membership policies were inspected first. A rolled-back transaction verified authenticated member create/read/update/delete, stale-update rejection, immutable ownership, cross-workspace insert denial, nonmember read/update/delete denial, and anonymous permission denial. The public API now recognizes the table and denies anonymous access as intended. Shopping-only policies were inspected; a shopping-only account and browser-level saving still require manual QA.
 
 ## Static QR
 
-Implementation complete locally; payload and SVG tests pass. Browser PNG, phone scanning, mobile layout, clipboard/share, and authenticated persistence remain unverified. Event dates intentionally use floating local times, explained in the form; they retain entered wall-clock values in the importing calendar. This follows [iCalendar floating-time semantics](https://www.rfc-editor.org/rfc/rfc5545#section-3.3.5). Payload escaping follows [ZXing's QR content documentation](https://github.com/zxing/zxing/wiki/Barcode-Contents).
+Implementation complete locally; payload and SVG tests pass. Browser PNG, phone scanning, mobile layout, clipboard/share, and browser-level persistence remain unverified; authenticated database CRUD is verified. Event dates intentionally use floating local times, explained in the form; they retain entered wall-clock values in the importing calendar. This follows [iCalendar floating-time semantics](https://www.rfc-editor.org/rfc/rfc5545#section-3.3.5). Payload escaping follows [ZXing's QR content documentation](https://github.com/zxing/zxing/wiki/Barcode-Contents).
 
 ## Dynamic QR
 
@@ -73,4 +73,4 @@ Browser verification was blocked because the browser tool could not verify an ad
 
 ## Remaining
 
-Release path: push to GitHub main to trigger Netlify automatic deployment. The database migration is separate and has not been applied. Apply/verify the migration and run authenticated/phone QA before considering the feature fully released. Logo support, saved-record offline sync, actual object actions, and dynamic redirects are deferred. Existing type/lint debt remains outside this change.
+Release path: push to GitHub main to trigger Netlify automatic deployment. The database migration has been applied and database access checks pass. Run browser and phone QA before considering all acceptance criteria verified. Logo support, saved-record offline sync, actual object actions, and dynamic redirects are deferred. Existing type/lint debt remains outside this change.
