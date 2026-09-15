@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Plus, ChevronRight } from 'lucide-react';
 
 export default function WorkspaceSwitcher() {
-  const { workspaces, activeWorkspaceId, setActiveWorkspaceId, createWorkspace, loading } = useWorkspace();
+  const { workspaces, activeWorkspaceId, setActiveWorkspaceId, createWorkspace, loading, error, refreshWorkspaces } = useWorkspace();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -50,6 +50,8 @@ export default function WorkspaceSwitcher() {
       </div>
     );
   }
+
+  if (error && workspaces.length === 0) return <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6"><p role="alert">{error}</p><button onClick={() => refreshWorkspaces()} className="text-blue-700">Try again</button></div>;
 
   // After loading: no workspaces means onboarding
   if (workspaces.length === 0) {

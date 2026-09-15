@@ -1,6 +1,6 @@
 // src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { WorkspaceProvider, useWorkspace } from './contexts/WorkspaceContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { SyncProvider } from './contexts/SyncContext';
@@ -9,6 +9,8 @@ import AppPage from './components/AppPage';
 import ShoppingPage from './components/ShoppingPage';
 
 import Auth from './pages/Auth';
+import Landing from './pages/Landing';
+import AuthCallback from './pages/AuthCallback';
 import Onboarding from './pages/Onboarding';
 import WorkspaceSwitcher from './pages/WorkspaceSwitcher';
 
@@ -33,28 +35,34 @@ import LeadsPage from './pages/crm/LeadsPage';
 import CompanyDetailPage from './pages/crm/companies/CompanyDetailPage';
 
 function HomeRedirect() {
-  const { activeWorkspaceId, loading, membership } = useWorkspace();
+  const { activeWorkspaceId, loading, isOnlyShopping, error, refreshWorkspaces } = useWorkspace();
   if (loading) return null;
 
-  const onlyShopping = Boolean((membership as any)?.only_shopping);
-  const stored = localStorage.getItem('active_workspace_id');
-  const wid = activeWorkspaceId || stored;
+  const wid = activeWorkspaceId;
 
+  if (error && !wid) return <div className="p-8"><p role="alert">{error}</p><button onClick={() => refreshWorkspaces()} className="mt-4 text-blue-700">Try again</button></div>;
   if (!wid) return <Navigate to="/workspace" replace />;
-  if (onlyShopping) return <Navigate to="/shopping" replace />;
+  if (isOnlyShopping) return <Navigate to="/shopping" replace />;
   return <Navigate to="/inbox" replace />;
+}
+
+function AccountWorkspace({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  return <WorkspaceProvider key={user?.id || 'anonymous'}>{children}</WorkspaceProvider>;
 }
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <WorkspaceProvider>
+        <AccountWorkspace>
           <SyncProvider>
             <ToastProvider>
             <Routes>
               {/* Public */}
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/auth/reset-password" element={<AuthCallback reset />} />
 
               {/* Workspace setup */}
               <Route
@@ -187,12 +195,13 @@ function App() {
               />
 
               {/* Root */}
-              <Route path="/" element={<HomeRedirect />} />
+              <Route path="/" element={<Landing />} />
+              <Route path="/app" element={<ProtectedRoute><HomeRedirect /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </ToastProvider>
           </SyncProvider>
-        </WorkspaceProvider>
+        </AccountWorkspace>
       </AuthProvider>
     </BrowserRouter>
   );

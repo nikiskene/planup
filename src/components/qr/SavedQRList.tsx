@@ -13,7 +13,7 @@ export default function SavedQRList({ workspaceId, onOpen }: { workspaceId: stri
     return () => { active = false; };
   }, [workspaceId, revision]);
   async function remove(record: QRRecord) {
-    if (!window.confirm(`Delete “${record.name}” from PlanUp? Downloaded or printed static QR codes will continue to work.`)) return;
+    if (!window.confirm(`Delete “${record.name}” from wrxs? Downloaded or printed static QR codes will continue to work.`)) return;
     setBusy(true);
     try { await deleteQR(record); refresh(n => n + 1); showToast('QR deleted', 'success'); }
     catch { showToast('Unable to delete. Check your connection and refresh before retrying.', 'error'); }

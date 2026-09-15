@@ -35,7 +35,7 @@ export default function SidebarNav({ homeItems, workItems }: Props) {
         <NavGroup label="Work" items={workItems} />
         <div className="mx-3 border-t border-gray-100" />
         <div className="px-3 text-xs leading-relaxed text-gray-400">
-          BCC <span className="font-medium text-gray-600">crm@iacy.com</span> on email. People and conversations update automatically.
+          Find your workspace’s email connection status in Settings.
         </div>
       </nav>
     </aside>

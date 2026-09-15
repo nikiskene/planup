@@ -10,13 +10,14 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Efficiency Planner',
-        short_name: 'Planup',
+        name: 'wrxs',
+        short_name: 'wrxs',
         description: 'Less input. More action.',
         theme_color: '#111827',
         background_color: '#f9fafb',
         display: 'standalone',
-        start_url: '/',
+        start_url: '/app',
+        id: '/',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },

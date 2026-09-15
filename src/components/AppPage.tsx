@@ -6,12 +6,11 @@ import { useWorkspace } from '../contexts/WorkspaceContext';
 import { Navigate, useLocation } from 'react-router-dom';
 
 function OnlyShoppingGuard({ children }: { children: React.ReactNode }) {
-  const { membership, loading } = useWorkspace();
+  const { isOnlyShopping, loading } = useWorkspace();
   const location = useLocation();
 
   if (loading) return null;
 
-  const onlyShopping = Boolean((membership as any)?.only_shopping);
   const path = location.pathname;
 
   const allowed =
@@ -20,16 +19,17 @@ function OnlyShoppingGuard({ children }: { children: React.ReactNode }) {
     path === '/workspace' ||
     path === '/onboarding';
 
-  if (onlyShopping && !allowed) return <Navigate to="/shopping" replace />;
+  if (isOnlyShopping && !allowed) return <Navigate to="/shopping" replace />;
 
   return <>{children}</>;
 }
 
 export default function AppPage({ children }: { children: React.ReactNode }) {
+  const { activeWorkspaceId } = useWorkspace();
   return (
     <ProtectedRoute requireWorkspace>
       <OnlyShoppingGuard>
-        <Layout>{children}</Layout>
+        <Layout key={activeWorkspaceId}>{children}</Layout>
       </OnlyShoppingGuard>
     </ProtectedRoute>
   );

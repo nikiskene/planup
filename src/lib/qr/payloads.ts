@@ -63,7 +63,7 @@ export function buildCalendarPayload(data: QRInputs['event']) {
   required(data.title, 'an event title');
   const start = calendarDate(data.startDate, data.startTime), end = calendarDate(data.endDate, data.endTime);
   if (end <= start) throw new Error('The event end must be after its start.');
-  return lines(['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PlanUp//QR Codes//EN', 'BEGIN:VEVENT',
+  return lines(['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//wrxs//QR Codes//EN', 'BEGIN:VEVENT',
     `UID:${escapeText(data.uid)}`, `DTSTAMP:${data.stamp}`, `DTSTART:${start}`, `DTEND:${end}`, `SUMMARY:${escapeText(data.title)}`,
     data.location && `LOCATION:${escapeText(data.location)}`, data.description && `DESCRIPTION:${escapeText(data.description)}`,
     data.url && `URL:${buildUrlPayload(data.url)}`, 'END:VEVENT', 'END:VCALENDAR']);

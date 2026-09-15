@@ -11,3 +11,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+
+// Pin queued writes to the account that started syncing, even if another tab signs in.
+export function createSessionClient(accessToken: string) {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    accessToken: async () => accessToken,
+  });
+}

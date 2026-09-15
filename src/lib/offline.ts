@@ -1,5 +1,5 @@
 import { openDB, type DBSchema } from 'idb';
-import { supabase } from './supabase';
+import { supabase, createSessionClient } from './supabase';
 
 export type OfflineTable = 'tasks' | 'notes' | 'categories';
 export type WritableOfflineTable = 'tasks' | 'notes';
@@ -12,6 +12,7 @@ type Entity = Record<string, any> & {
 };
 
 interface CachedEntity {
+  userId?: string; // Missing only on preserved, unowned legacy cache entries.
   key: string;
   table: OfflineTable;
   workspaceId: string;
@@ -52,44 +53,71 @@ const dbPromise = openDB<PlanupOfflineDb>('planup-offline', 1, {
   },
 });
 
-const entityKey = (table: OfflineTable, id: string) => `${table}:${id}`;
+const entityKey = (table: OfflineTable, id: string, userId: string) => `${userId}:${table}:${id}`;
 
-export async function cacheEntities(table: OfflineTable, workspaceId: string, rows: Entity[]) {
+async function currentUserId() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user.id ?? null;
+}
+
+async function requireUser(expected?: string) {
+  const id = await currentUserId();
+  if (!id || (expected && id !== expected)) throw new Error('Your account changed. Reopen this page before continuing.');
+  return id;
+}
+
+export async function cacheEntities(table: OfflineTable, workspaceId: string, rows: Entity[], accountId?: string) {
+  const userId = await requireUser(accountId);
   const db = await dbPromise;
-  const pending = (await db.getAll('mutations')).filter((item) => item.table === table && item.workspaceId === workspaceId);
+  const pending = (await db.getAll('mutations')).filter((item) => item.userId === userId && item.table === table && item.workspaceId === workspaceId);
   const tx = db.transaction('entities', 'readwrite');
-  const existing = await tx.store.index('by-table-workspace').getAllKeys([table, workspaceId]);
-  const incoming = new Set(rows.map((row) => entityKey(table, row.id)));
-  const pendingKeys = new Set(pending.map((item) => entityKey(table, item.entityId)));
+  const existing = (await tx.store.index('by-table-workspace').getAll([table, workspaceId])).filter(row => row.userId === userId).map(row => row.key);
+  const incoming = new Set(rows.map((row) => entityKey(table, row.id, userId)));
+  const pendingKeys = new Set(pending.map((item) => entityKey(table, item.entityId, userId)));
   await Promise.all(existing.filter((key) => !incoming.has(String(key)) && !pendingKeys.has(String(key))).map((key) => tx.store.delete(key)));
-  await Promise.all(rows.map((value) => tx.store.put({ key: entityKey(table, value.id), table, workspaceId, value })));
+  await Promise.all(rows.map((value) => tx.store.put({ key: entityKey(table, value.id, userId), userId, table, workspaceId, value })));
   await Promise.all(pending.map((item) => item.operation === 'delete'
-    ? tx.store.delete(entityKey(table, item.entityId))
+    ? tx.store.delete(entityKey(table, item.entityId, userId))
     : item.localRecord
-      ? tx.store.put({ key: entityKey(table, item.entityId), table, workspaceId, value: item.localRecord })
+      ? tx.store.put({ key: entityKey(table, item.entityId, userId), userId, table, workspaceId, value: item.localRecord })
       : Promise.resolve()));
   await tx.done;
 }
 
 export async function getCachedEntities<T extends Entity>(table: OfflineTable, workspaceId: string): Promise<T[]> {
+  const userId = await currentUserId();
+  if (!userId) return [];
   const db = await dbPromise;
   const rows = await db.getAllFromIndex('entities', 'by-table-workspace', [table, workspaceId]);
-  return rows.map((row) => row.value as T);
+  const result = new Map(rows.filter(row => row.userId === userId).map(row => [row.value.id, row.value as T]));
+  // Old queued edits carry an author already. Preserve and recover only that author's work.
+  const pending = await db.getAll('mutations');
+  for (const item of pending.filter(item => item.userId === userId && item.table === table && item.workspaceId === workspaceId)) {
+    if (item.operation === 'delete') result.delete(item.entityId);
+    else if (item.localRecord) result.set(item.entityId, item.localRecord as T);
+  }
+  return [...result.values()];
 }
 
 export async function getCachedEntity<T extends Entity>(table: OfflineTable, id: string): Promise<T | null> {
-  const row = await (await dbPromise).get('entities', entityKey(table, id));
+  const userId = await currentUserId();
+  if (!userId) return null;
+  const db = await dbPromise;
+  const pending = (await db.getAll('mutations')).find(item => item.userId === userId && item.table === table && item.entityId === id);
+  if (pending) return pending.operation === 'delete' ? null : pending.localRecord as T;
+  const row = await db.get('entities', entityKey(table, id, userId));
   return (row?.value as T) || null;
 }
 
 export async function saveLocalMutation(input: Omit<PendingMutation, 'id' | 'createdAt'>) {
+  await requireUser(input.userId);
   const db = await dbPromise;
   const tx = db.transaction(['entities', 'mutations'], 'readwrite');
   const queued = await tx.objectStore('mutations').getAll();
-  const previous = queued.find((item) => item.table === input.table && item.entityId === input.entityId);
+  const previous = queued.find((item) => item.userId === input.userId && item.table === input.table && item.entityId === input.entityId);
 
   if (previous && previous.operation === 'insert' && input.operation === 'delete') {
-    await tx.objectStore('entities').delete(entityKey(input.table, input.entityId));
+    await tx.objectStore('entities').delete(entityKey(input.table, input.entityId, input.userId));
     await tx.objectStore('mutations').delete(previous.id);
     await tx.done;
     window.dispatchEvent(new Event('planup-sync-change'));
@@ -104,10 +132,11 @@ export async function saveLocalMutation(input: Omit<PendingMutation, 'id' | 'cre
       }
     : { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
   if (input.operation === 'delete') {
-    await tx.objectStore('entities').delete(entityKey(input.table, input.entityId));
+    await tx.objectStore('entities').delete(entityKey(input.table, input.entityId, input.userId));
   } else if (input.localRecord) {
     await tx.objectStore('entities').put({
-      key: entityKey(input.table, input.entityId),
+      key: entityKey(input.table, input.entityId, input.userId),
+      userId: input.userId,
       table: input.table,
       workspaceId: input.workspaceId,
       value: input.localRecord,
@@ -120,7 +149,8 @@ export async function saveLocalMutation(input: Omit<PendingMutation, 'id' | 'cre
 }
 
 export async function pendingMutationCount() {
-  return (await dbPromise).count('mutations');
+  const userId = await currentUserId();
+  return (await (await dbPromise).getAll('mutations')).filter(item => item.userId === userId).length;
 }
 
 export async function loadOfflineCollection<T extends Entity>(
@@ -128,14 +158,16 @@ export async function loadOfflineCollection<T extends Entity>(
   workspaceId: string,
   fetchRemote: () => Promise<T[]>,
 ): Promise<T[]> {
+  const userId = await requireUser();
   const cached = await getCachedEntities<T>(table, workspaceId);
   if (!navigator.onLine) return cached;
   try {
     const remote = await fetchRemote();
-    await cacheEntities(table, workspaceId, remote);
+    await cacheEntities(table, workspaceId, remote, userId);
     return getCachedEntities<T>(table, workspaceId);
   } catch (error) {
-    if (cached.length) return cached;
+    await requireUser(userId);
+    if (cached.length && !navigator.onLine) return cached;
     throw error;
   }
 }
@@ -184,8 +216,8 @@ function sameBaseVersion(remote: Entity, base: Entity | null) {
   return JSON.stringify(remote) === JSON.stringify(base);
 }
 
-async function preserveConflict(mutation: PendingMutation, remote: Entity | null, reason: string) {
-  const { error } = await (supabase as any).from('offline_lost_and_found').insert({
+async function preserveConflict(client: typeof supabase, mutation: PendingMutation, remote: Entity | null, reason: string) {
+  const { error } = await (client as any).from('offline_lost_and_found').insert({
     workspace_id: mutation.workspaceId,
     user_id: mutation.userId,
     device_id: getDeviceId(),
@@ -200,8 +232,8 @@ async function preserveConflict(mutation: PendingMutation, remote: Entity | null
   if (error) throw error;
 }
 
-async function syncMutation(mutation: PendingMutation) {
-  const table = (supabase as any).from(mutation.table);
+async function syncMutation(client: typeof supabase, mutation: PendingMutation) {
+  const table = (client as any).from(mutation.table);
   const { data: remote, error: readError } = await table
     .select('*')
     .eq('workspace_id', mutation.workspaceId)
@@ -211,7 +243,7 @@ async function syncMutation(mutation: PendingMutation) {
 
   if (mutation.operation === 'insert') {
     if (remote) {
-      await preserveConflict(mutation, remote as Entity, 'The same record ID already exists on the server.');
+      await preserveConflict(client, mutation, remote as Entity, 'The same record ID already exists on the server.');
       return remote as Entity;
     }
     const { error } = await table.insert(mutation.localRecord as any);
@@ -220,12 +252,12 @@ async function syncMutation(mutation: PendingMutation) {
   }
 
   if (!remote) {
-    await preserveConflict(mutation, null, 'The server record was deleted while this device was offline.');
+    await preserveConflict(client, mutation, null, 'The server record was deleted while this device was offline.');
     return null;
   }
 
   if (!sameBaseVersion(remote as Entity, mutation.baseRecord)) {
-    await preserveConflict(mutation, remote as Entity, 'The record changed on another device while this device was offline.');
+    await preserveConflict(client, mutation, remote as Entity, 'The record changed on another device while this device was offline.');
     return remote as Entity;
   }
 
@@ -251,23 +283,33 @@ async function syncMutation(mutation: PendingMutation) {
 export async function syncPendingMutations() {
   if (!navigator.onLine) return { synced: 0, conflicts: 0 };
   const db = await dbPromise;
-  const mutations = await db.getAllFromIndex('mutations', 'by-created-at');
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { synced: 0, conflicts: 0 };
+  const client = createSessionClient(session.access_token);
+  const mutations = (await db.getAllFromIndex('mutations', 'by-created-at')).filter(item => item.userId === session.user.id);
   let synced = 0;
   let conflicts = 0;
 
   for (const mutation of mutations) {
     try {
-      const result = await syncMutation(mutation);
+      if (await currentUserId() !== session.user.id) break;
+      const result = await syncMutation(client, mutation);
       const tx = db.transaction(['entities', 'mutations'], 'readwrite');
+      const latest = await tx.objectStore('mutations').get(mutation.id);
+      if (JSON.stringify(latest) !== JSON.stringify(mutation)) {
+        await tx.done;
+        continue;
+      }
       if (result) {
         await tx.objectStore('entities').put({
-          key: entityKey(mutation.table, mutation.entityId),
+          key: entityKey(mutation.table, mutation.entityId, mutation.userId),
+          userId: mutation.userId,
           table: mutation.table,
           workspaceId: mutation.workspaceId,
           value: result,
         });
       } else {
-        await tx.objectStore('entities').delete(entityKey(mutation.table, mutation.entityId));
+        await tx.objectStore('entities').delete(entityKey(mutation.table, mutation.entityId, mutation.userId));
       }
       await tx.objectStore('mutations').delete(mutation.id);
       await tx.done;

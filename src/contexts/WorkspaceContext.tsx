@@ -18,8 +18,7 @@ type Workspace =
 type WorkspaceMember =
   Database['public']['Tables']['workspace_members']['Row'];
 
-const WORKSPACES_CACHE_KEY = 'planup_cached_workspaces';
-const MEMBERSHIP_CACHE_KEY = 'planup_cached_membership';
+
 
 interface WorkspaceContextType {
   workspaces: Workspace[];
@@ -27,6 +26,7 @@ interface WorkspaceContextType {
   activeWorkspace: Workspace | null;
   membership: WorkspaceMember | null;
   loading: boolean;
+  error: string | null;
   isOnlyShopping: boolean;
 
   setActiveWorkspaceId: (id: string) => void;
@@ -70,6 +70,9 @@ export function WorkspaceProvider({
   const { user } = useAuth();
 
   const userId = user?.id ?? null;
+  const WORKSPACES_CACHE_KEY = `wrxs:${userId}:workspaces`;
+  const MEMBERSHIP_CACHE_KEY = `wrxs:${userId}:membership`;
+  const ACTIVE_CACHE_KEY = `wrxs:${userId}:active-workspace`;
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
     try { return JSON.parse(localStorage.getItem(WORKSPACES_CACHE_KEY) || '[]'); }
@@ -80,7 +83,7 @@ export function WorkspaceProvider({
     activeWorkspaceId,
     setActiveWorkspaceIdState,
   ] = useState<string | null>(() => {
-    return localStorage.getItem('active_workspace_id');
+    return localStorage.getItem(ACTIVE_CACHE_KEY);
   });
 
   const [membership, setMembership] = useState<WorkspaceMember | null>(() => {
@@ -89,22 +92,27 @@ export function WorkspaceProvider({
   });
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const isOnlyShopping = Boolean(
-    (membership as any)?.only_shopping,
-  );
+  const shoppingFlags = membership as unknown as { only_shopping?: boolean; shopping_only?: boolean } | null;
+  const isOnlyShopping = Boolean(shoppingFlags?.only_shopping || shoppingFlags?.shopping_only);
 
   const fetchInFlight = useRef(false);
+  const activeIdRef = useRef(activeWorkspaceId);
 
   const setActiveWorkspaceId = useCallback(
     (id: string) => {
+      if (id === activeIdRef.current) return;
+      activeIdRef.current = id;
+      setMembership(null);
+      localStorage.removeItem(MEMBERSHIP_CACHE_KEY);
       setActiveWorkspaceIdState(id);
       localStorage.setItem(
-        'active_workspace_id',
+        ACTIVE_CACHE_KEY,
         id,
       );
     },
-    [],
+    [ACTIVE_CACHE_KEY, MEMBERSHIP_CACHE_KEY],
   );
 
   const fetchWorkspaces = useCallback(async () => {
@@ -120,6 +128,7 @@ export function WorkspaceProvider({
 
     fetchInFlight.current = true;
     setLoading(true);
+    setError(null);
 
     const safety = window.setTimeout(() => {
       fetchInFlight.current = false;
@@ -186,22 +195,14 @@ export function WorkspaceProvider({
         ]),
       );
 
-      /*
-       * Do NOT immediately destroy the remembered workspace
-       * merely because one lookup returned nothing.
-       */
+      if (memberError || ownedError) throw memberError || ownedError;
       if (workspaceIds.length === 0) {
-        console.warn(
-          'No workspace rows resolved for current user.',
-        );
-
         setWorkspaces([]);
-
-        /*
-         * Preserve active_workspace_id here.
-         * ProtectedRoute can wait/retry instead of throwing
-         * the user into onboarding.
-         */
+        setActiveWorkspaceIdState(null);
+        setMembership(null);
+        localStorage.removeItem(ACTIVE_CACHE_KEY);
+        localStorage.removeItem(MEMBERSHIP_CACHE_KEY);
+        localStorage.setItem(WORKSPACES_CACHE_KEY, '[]');
         return;
       }
 
@@ -235,7 +236,7 @@ export function WorkspaceProvider({
        * 4. Resolve active workspace.
        */
       const saved = localStorage.getItem(
-        'active_workspace_id',
+        ACTIVE_CACHE_KEY,
       );
 
       let nextActive: string | null = null;
@@ -254,13 +255,16 @@ export function WorkspaceProvider({
 
       if (nextActive) {
         localStorage.setItem(
-          'active_workspace_id',
+          ACTIVE_CACHE_KEY,
           nextActive,
         );
       }
 
+      if (activeIdRef.current !== nextActive) setMembership(null);
+      activeIdRef.current = nextActive;
       setActiveWorkspaceIdState(nextActive);
     } catch (error) {
+      setError('Unable to refresh your workspaces. Check your connection and try again.');
       console.error(
         'Error fetching workspaces:',
         error,
@@ -270,7 +274,7 @@ export function WorkspaceProvider({
       fetchInFlight.current = false;
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, WORKSPACES_CACHE_KEY, MEMBERSHIP_CACHE_KEY, ACTIVE_CACHE_KEY]);
 
   const fetchMembership = useCallback(
     async () => {
@@ -295,19 +299,21 @@ export function WorkspaceProvider({
 
         if (error) throw error;
 
+        if (activeIdRef.current !== activeWorkspaceId) return;
         setMembership(data);
         if (data) localStorage.setItem(MEMBERSHIP_CACHE_KEY, JSON.stringify(data));
+        else localStorage.removeItem(MEMBERSHIP_CACHE_KEY);
       } catch (error) {
         console.error(
           'Error fetching membership:',
           error,
         );
 
-        if (!navigator.onLine) return;
+        if (activeIdRef.current !== activeWorkspaceId || !navigator.onLine) return;
         setMembership(null);
       }
     },
-    [userId, activeWorkspaceId],
+    [userId, activeWorkspaceId, MEMBERSHIP_CACHE_KEY],
   );
 
   useEffect(() => {
@@ -398,7 +404,6 @@ export function WorkspaceProvider({
         });
 
         fetchWorkspaces();
-        fetchMembership();
 
         return workspaceId;
       } catch (error) {
@@ -414,7 +419,6 @@ export function WorkspaceProvider({
       userId,
       setActiveWorkspaceId,
       fetchWorkspaces,
-      fetchMembership,
     ],
   );
 
@@ -432,6 +436,7 @@ export function WorkspaceProvider({
         activeWorkspace,
         membership,
         loading,
+        error,
         isOnlyShopping,
         setActiveWorkspaceId,
         refreshWorkspaces:

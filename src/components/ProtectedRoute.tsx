@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
@@ -16,22 +15,10 @@ export default function ProtectedRoute({ children, requireWorkspace = false }: P
     workspaces,
     loading: workspaceLoading,
     refreshWorkspaces,
+    error,
   } = useWorkspace();
 
-  const stored = localStorage.getItem('active_workspace_id');
-  const wid = activeWorkspaceId || stored;
-
-  // If we have a wid but workspace list is empty after loading, refresh once.
-  useEffect(() => {
-    if (!requireWorkspace) return;
-    if (!user) return;
-    if (!wid) return;
-    if (workspaceLoading) return;
-
-    if (workspaces.length === 0) {
-      refreshWorkspaces();
-    }
-  }, [requireWorkspace, user, wid, workspaceLoading, workspaces.length, refreshWorkspaces]);
+  const wid = activeWorkspaceId;
 
   // Wait for auth; for workspace-required pages also wait for workspace init.
   if (authLoading || (requireWorkspace && workspaceLoading)) {
@@ -48,13 +35,11 @@ export default function ProtectedRoute({ children, requireWorkspace = false }: P
 
   if (!requireWorkspace) return <>{children}</>;
 
-  // If we have a wid but the list is still empty, do NOT redirect yet.
-  if (wid && workspaces.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Preparing workspace...</div>
-      </div>
-    );
+  if (error && workspaces.length === 0) {
+    return <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
+      <p role="alert">{error}</p>
+      <button onClick={() => refreshWorkspaces()} className="rounded-xl bg-slate-950 px-5 py-3 text-white">Try again</button>
+    </div>;
   }
 
   // No workspaces and no wid => onboarding

@@ -5,6 +5,7 @@ import WorkspaceMenu from './layout/WorkspaceMenu';
 import SidebarNav from './layout/SidebarNav';
 import MobileNav from './layout/MobileNav';
 import { HOME_NAV_ITEMS, WORK_NAV_ITEMS } from './layout/navConfig';
+import { BrandLogo } from './brand/BrandAssets';
 import SyncStatus from './SyncStatus';
 
 interface LayoutProps { children: ReactNode }
@@ -15,9 +16,8 @@ export default function Layout({ children }: LayoutProps) {
       <header className="sticky top-0 z-40 h-[57px] border-b border-white/70 bg-white/85 shadow-sm shadow-slate-900/[0.03] backdrop-blur-xl">
         <div className="flex h-full items-center justify-between px-4 sm:px-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-slate-950 to-blue-700 text-sm font-semibold text-white shadow-md">EP</div>
-            <div>
-              <div className="text-sm font-semibold leading-tight text-gray-950">Efficiency Planner</div>
+            <div className="rounded-xl bg-slate-950 px-3 py-2"><BrandLogo className="h-6 w-20" /></div>
+            <div className="hidden sm:block">
               <div className="text-[11px] leading-tight text-gray-400">Less input. More action.</div>
             </div>
           </div>

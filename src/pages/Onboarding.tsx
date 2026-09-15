@@ -26,7 +26,6 @@ export default function Onboarding() {
       }
 
       // Persist FIRST so any route guards can read it immediately
-      localStorage.setItem('active_workspace_id', workspaceId);
 
       // Update context/state
       setActiveWorkspaceId(workspaceId);

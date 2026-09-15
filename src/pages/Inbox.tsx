@@ -41,7 +41,8 @@ function Home({ workspace, name }: { workspace: string; name: string }) {
         try {
           if (!navigator.onLine) throw new Error('Offline — showing tasks saved on this device.');
           const rows = await loadTasks(workspace);
-          await cacheEntities('tasks', workspace, rows);
+          if (!current() || !user) return;
+          await cacheEntities('tasks', workspace, rows, user.id);
           const local = await getCachedEntities<HomeTask>('tasks', workspace);
           if (current()) { setTasks(local); setTaskError(''); }
         } catch (error) {
@@ -58,7 +59,7 @@ function Home({ workspace, name }: { workspace: string; name: string }) {
         finally { if (current()) setLeadLoading(false); }
       })(),
     ]);
-  }, [workspace]);
+  }, [workspace, user]);
   useEffect(() => {
     mounted.current = true;
     void refresh();
