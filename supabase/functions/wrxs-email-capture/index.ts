@@ -55,7 +55,8 @@ async function configure(req: Request, body: Json, origin: string | null) {
   } catch (e) { const code = e instanceof Error ? e.message : ''; return response({ error: code === 'confirm_email' ? 'Confirm your wrxs account email first.' : code === 'forbidden' ? 'Workspace administrator required.' : 'Unable to save this wrxs ID.' }, code === 'unauthorized' ? 401 : code === 'forbidden' ? 403 : 503, origin); }
 }
 async function inbound(req: Request) {
-  if (!inboundToken || req.headers.get('Authorization') !== `Bearer ${inboundToken}`) return response({ error: 'Unauthorized.' }, 401);
+  const supplied = req.headers.get('Authorization') === `Bearer ${inboundToken}` || new URL(req.url).searchParams.get('token') === inboundToken;
+  if (!inboundToken || !supplied) return response({ error: 'Unauthorized.' }, 401);
   let payload: Json; try { payload = await req.json(); } catch { return response({ error: 'Invalid provider payload.' }, 400); }
   const recipient = cleanEmail((addressList(payload.ToFull)[0] || {}).Email || payload.OriginalRecipient || payload.To);
   const sender = cleanEmail((payload.FromFull as Address | undefined)?.Email || payload.From);
@@ -90,7 +91,7 @@ Deno.serve(async req => {
   if (req.method === 'OPTIONS') return response({}, 200, origin);
   if (req.method !== 'POST') return response({ error: 'POST required.' }, 405, origin);
   const auth = req.headers.get('Authorization') || '';
-  if (inboundToken && auth === `Bearer ${inboundToken}`) return inbound(req);
+  if (inboundToken && (auth === `Bearer ${inboundToken}` || new URL(req.url).searchParams.get('token') === inboundToken)) return inbound(req);
   let body: Json; try { body = await req.json(); } catch { return response({ error: 'Invalid request.' }, 400, origin); }
   return configure(req, body, origin);
 });
