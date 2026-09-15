@@ -75,7 +75,7 @@ export default function ServiceSettings() {
     try {
       const result = await emailRequest({ workspace_id: activeWorkspaceId, alias: emailAlias });
       setEmailAlias(result.address.replace('@wrxs.cc', ''));
-      setEmailNotice(`${result.address} is reserved for this workspace. Receiving will switch on after wrxs completes the Postmark connection.`);
+      setEmailNotice(result.enabled ? `${result.address} is ready for BCC capture.` : `${result.address} is reserved for this workspace. Receiving will switch on after wrxs completes the Postmark connection.`);
       setAttempt(value => value + 1);
     } catch (cause) { setEmailError(cause instanceof Error ? cause.message : 'Unable to save this wrxs ID.'); }
     finally { setEmailBusy(false); }
