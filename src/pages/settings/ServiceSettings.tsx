@@ -3,9 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 
-type Price = { plan_key: string; interval: string; currency: string; amount_cents: number; checkout_enabled: boolean };
+type Price = { plan_key: string; billing_interval: string; currency: string; amount_cents: number; checkout_enabled: boolean };
 type EmailRoute = { local_part: string; domain: string; enabled: boolean; workspace_id: string };
-type Subscription = { status: string; interval: string; access_until: string | null; workspace_id: string };
+type Subscription = { status: string; billing_interval: string; access_until: string | null; workspace_id: string };
 type ReadTable<T extends Record<string, unknown>> = { Row: T; Insert: never; Update: never; Relationships: [] };
 type ServiceDatabase = { public: { Tables: {
   wrxs_price_catalog: ReadTable<Price>;
@@ -29,13 +29,13 @@ export default function ServiceSettings() {
     async function load() {
       if (!activeWorkspaceId) return;
       try {
-        const priceResult = await client.from('wrxs_price_catalog').select('plan_key,interval,currency,amount_cents,checkout_enabled').eq('plan_key', 'standard').order('amount_cents');
+        const priceResult = await client.from('wrxs_price_catalog').select('plan_key,billing_interval,currency,amount_cents,checkout_enabled').eq('plan_key', 'standard').order('amount_cents');
         if (priceResult.error) throw priceResult.error;
         if (!cancelled) setPrices(priceResult.data);
         if (canManage) {
           const [emailResult, subscriptionResult] = await Promise.all([
             client.from('wrxs_email_routes').select('local_part,domain,enabled,workspace_id').eq('workspace_id', activeWorkspaceId),
-            client.from('wrxs_subscriptions').select('status,interval,access_until,workspace_id').eq('workspace_id', activeWorkspaceId),
+            client.from('wrxs_subscriptions').select('status,billing_interval,access_until,workspace_id').eq('workspace_id', activeWorkspaceId),
           ]);
           if (emailResult.error) throw emailResult.error;
           if (subscriptionResult.error) throw subscriptionResult.error;
@@ -51,8 +51,8 @@ export default function ServiceSettings() {
     <h2 className="text-lg font-semibold text-gray-950">Your wrxs services</h2>
     {loading ? <p role="status" className="mt-4 text-sm text-gray-500">Loading service settings…</p> : error ? <div className="mt-4"><p role="alert" className="text-sm text-red-700">{error}</p><button onClick={() => setAttempt(value => value + 1)} className="mt-3 text-sm text-blue-700">Try again</button></div> : <div className="mt-5 space-y-6 text-sm leading-6">
       <div><h3 className="font-medium">Subscription</h3>
-        <p className="mt-1 text-gray-600">{prices.map(price => `${new Intl.NumberFormat('en-US', { style: 'currency', currency: price.currency.toUpperCase(), maximumFractionDigits: 0 }).format(price.amount_cents / 100)} USD / ${price.interval}`).join(' · ') || 'Pricing is not available yet.'}</p>
-        {subscriptions.length > 0 && <ul className="mt-2">{subscriptions.map((subscription, index) => <li key={index}>{subscription.interval === 'year' ? 'Annual' : 'Monthly'} subscription: {subscription.status}{subscription.access_until ? ` · Access until ${new Date(subscription.access_until).toLocaleDateString()}` : ''}</li>)}</ul>}
+        <p className="mt-1 text-gray-600">{prices.map(price => `${new Intl.NumberFormat('en-US', { style: 'currency', currency: price.currency.toUpperCase(), maximumFractionDigits: 0 }).format(price.amount_cents / 100)} USD / ${price.billing_interval}`).join(' · ') || 'Pricing is not available yet.'}</p>
+        {subscriptions.length > 0 && <ul className="mt-2">{subscriptions.map((subscription, index) => <li key={index}>{subscription.billing_interval === 'year' ? 'Annual' : 'Monthly'} subscription: {subscription.status}{subscription.access_until ? ` · Access until ${new Date(subscription.access_until).toLocaleDateString()}` : ''}</li>)}</ul>}
         <p className="mt-2 text-gray-500">Subscription checkout is not available in the app yet. No payment is collected here.</p>
       </div>
       <div><h3 className="font-medium">Email capture</h3>

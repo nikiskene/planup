@@ -94,3 +94,8 @@ The accompanying web release adds the neutral wrxs public page, email-confirmati
 7. Run authenticated multi-account checks for fresh signup, workspace creation, viewer/contributor/shopping-only roles, QR save/reopen, notes/tasks, account switching and offline recovery. Automated browser review was unavailable in this environment; unit/build/database checks do not replace that walkthrough.
 
 Reference for email confirmation and recovery: https://supabase.com/docs/guides/auth/passwords
+
+
+### Stripe product registration follow-up
+
+`05_stripe_products.sql` is prepared for the user to run manually after stages 00–04. It records the supplied monthly and annual product IDs in a new optional `stripe_product_id` column. It verifies existing amounts, refuses to replace different product assignments or modify an enabled checkout, and preserves all existing price IDs. It is safe to rerun with the same assignments. This script does not create or verify Stripe prices and does not activate payments. Supply the two recurring `price_...` IDs for the subsequent price mapping.

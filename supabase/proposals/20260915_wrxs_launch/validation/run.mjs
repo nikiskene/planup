@@ -19,4 +19,8 @@ try {
  console.log('Behavioral checks PASS');
  for(const file of ['01_account_security.sql','02_workspace_links.sql']){await db.exec(fs.readFileSync(dir+file,'utf8'));console.log(file,'rerun PASS');}
  await db.exec(fs.readFileSync(dir+'04_verify.sql','utf8'));console.log('04_verify.sql PASS');
+ for (let run=0;run<2;run++) await db.exec(fs.readFileSync(dir+'05_stripe_products.sql','utf8'));
+ const products=await db.query('select billing_interval, stripe_product_id, stripe_price_id, checkout_enabled from public.wrxs_price_catalog order by amount_cents');
+ if(products.rows.length!==2 || products.rows[0].stripe_product_id!=='prod_VGUQxjX7HY1nZM' || products.rows[1].stripe_product_id!=='prod_VGURINssZA7e4K' || products.rows.some(row=>row.checkout_enabled || row.stripe_price_id)) throw new Error('Product registration or inactive billing check failed');
+ console.log('05_stripe_products.sql and rerun PASS; billing remains inactive');
 } catch(e){ console.error(e.message); if(e.query)console.error(e.query.slice(-1800));process.exitCode=1;}finally{await db.close();}
