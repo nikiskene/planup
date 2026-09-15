@@ -53,5 +53,10 @@ try {
  if(routes.rows[0].domain!=='wrxs.cc' || routes.rows[0].enabled || routes.rows[0].column_default!==null) throw new Error('Email capture route migration did not preserve its inactive, explicit-alias boundary');
  await db.exec(fs.readFileSync(dir+'10_workspace_email_capture_verify.sql','utf8'));
  console.log('10_workspace_email_capture.sql and verification PASS');
+ await db.exec(fs.readFileSync(dir+'11_feature_board.sql','utf8'));
+ await db.exec(fs.readFileSync(dir+'11_feature_board_verify.sql','utf8'));
+ const featureBoard=await db.query('select count(*)::int as count from public.wrxs_feature_board');
+ if(featureBoard.rows[0].count!==0) throw new Error('Feature board did not start empty');
+ console.log('11_feature_board.sql and verification PASS');
 
 } catch(e){ console.error(e.message); if(e.query)console.error(e.query.slice(-1800));process.exitCode=1;}finally{await db.close();}

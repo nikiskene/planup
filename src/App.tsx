@@ -24,6 +24,7 @@ import Dues from './pages/Dues';
 import Shopping from './pages/Shopping';
 import Settings from './pages/Settings';
 import SettingsPage from './pages/settings/SettingsPage';
+import FeatureBoard from './pages/FeatureBoard';
 
 // ✅ default import (CrmContacts.tsx exports default)
 import { PeoplePage } from './pages/crm/contacts/PeoplePage';
@@ -137,6 +138,7 @@ function App() {
                   </AppPage>
                 }
               />
+              <Route path="/features" element={<AppPage><FeatureBoard /></AppPage>} />
 
               {/* Shopping (allowed in only_shopping mode) */}
               <Route

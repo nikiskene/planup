@@ -3,6 +3,7 @@
 import {
   CheckSquare,
   HandCoins,
+  Lightbulb,
   Home,
   NotebookPen,
   QrCode,
@@ -24,4 +25,5 @@ export const WORK_NAV_ITEMS: NavItem[] = [
   { label: 'Leads', href: '/crm/contacts', icon: Users },
   { label: 'QR Codes', href: '/qr', icon: QrCode },
   { label: 'Settings', href: '/settings', icon: Settings },
+  { label: 'Feature requests', href: '/features', icon: Lightbulb },
 ];
