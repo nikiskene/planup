@@ -33,6 +33,7 @@ try {
  if(!rejected) throw new Error('Conflicting price was not rejected');
  const preserved=await db.query("select stripe_price_id from public.wrxs_price_catalog where billing_interval='month'");
  if(preserved.rows[0].stripe_price_id!=='price_existing_other') throw new Error('Conflicting price was overwritten');
+ await db.exec("update public.wrxs_price_catalog set stripe_price_id='price_1UFxRwEQ9WPDgXa98gQsm56L' where billing_interval='month'");
  console.log('06_stripe_prices.sql, rerun, and conflicting-price protection PASS');
  for(let run=0;run<2;run++) await db.exec(fs.readFileSync(dir+'07_billing_runtime.sql','utf8'));
  await db.exec(fs.readFileSync(path.join(here,'billing.sql'),'utf8'));
@@ -43,5 +44,9 @@ try {
  const founder=await db.query("select count(*)::int as count, bool_and(expires_at is null) as permanent from public.wrxs_access_grants where workspace_id='ed0d87eb-2ec0-4ca8-8e2d-92d65b305c4f' and reason='founder'");
  if(founder.rows[0].count!==1 || !founder.rows[0].permanent) throw new Error('Founder grant was not permanent or rerunnable');
  console.log('08_niki_founder_access.sql and rerun PASS');
+ await db.exec(fs.readFileSync(dir+'09_enable_checkout.sql','utf8'));
+ const enabled=await db.query('select count(*)::int as count from public.wrxs_price_catalog where plan_key=\'standard\' and checkout_enabled');
+ if(enabled.rows[0].count!==2) throw new Error('Checkout activation did not enable both approved plans');
+ console.log('09_enable_checkout.sql PASS');
 
 } catch(e){ console.error(e.message); if(e.query)console.error(e.query.slice(-1800));process.exitCode=1;}finally{await db.close();}

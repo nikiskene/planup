@@ -114,3 +114,7 @@ See `../../functions/README.md` for the Stripe secret, webhook and portal setup 
 ### Founder access follow-up
 
 `08_niki_founder_access.sql` is prepared for manual execution after stage 07. It creates or normalizes one permanent `founder` grant for the verified Niki Skene workspace and its confirmed owner. It scopes the exception to the workspace, not the profile: other workspaces remain subject to their own subscription/access rules. The grant becomes relevant only when a future paid-access policy is attached to application data; this script does not enable that policy. The validation suite verifies initial execution, rerun, one-grant behavior, and authenticated active-access evaluation.
+
+### Checkout activation
+
+`09_enable_checkout.sql` is the manual final database switch. It verifies the two approved live Stripe catalog IDs and amounts before enabling checkout for exactly the monthly and annual standard plans. It does not grant access on a browser redirect; subscription state continues to come from the signature-verified Stripe webhook. Set `WRXS_BILLING_ENABLED=true` as a Supabase Edge Function secret only after the SQL succeeds. The current functions default to inactive if that secret is absent or not exactly `true`.
