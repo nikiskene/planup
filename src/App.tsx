@@ -11,6 +11,7 @@ import ShoppingPage from './components/ShoppingPage';
 import Auth from './pages/Auth';
 import Landing from './pages/Landing';
 import AuthCallback from './pages/AuthCallback';
+import { LegalNotice, Privacy, Terms } from './pages/Legal';
 import Onboarding from './pages/Onboarding';
 import WorkspaceSwitcher from './pages/WorkspaceSwitcher';
 
@@ -63,6 +64,9 @@ function App() {
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/auth/reset-password" element={<AuthCallback reset />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/legal-notice" element={<LegalNotice />} />
 
               {/* Workspace setup */}
               <Route

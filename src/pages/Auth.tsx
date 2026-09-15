@@ -11,6 +11,7 @@ export default function Auth() {
   const [mode, setMode] = useState<Mode>(params.get('mode') === 'signup' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -27,7 +28,7 @@ export default function Auth() {
         if (result.error) throw result.error;
         navigate('/app', { replace: true });
       } else if (mode === 'signup') {
-        const result = await signUp(cleanEmail, password);
+        const result = await signUp(cleanEmail, password, acceptedTerms);
         if (result.error) throw result.error;
         if (result.confirmed) navigate('/onboarding', { replace: true });
         else { setMode('confirm'); setMessage('Check your inbox for a confirmation link. Confirm your email before logging in. If you already have an account, log in or reset your password.'); }
@@ -53,6 +54,7 @@ export default function Auth() {
       <form onSubmit={submit} className="space-y-5">
         <div><label htmlFor="email" className="mb-2 block text-sm font-medium">Email</label><input id="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-3" /></div>
         {(mode === 'login' || mode === 'signup') && <div><label htmlFor="password" className="mb-2 block text-sm font-medium">Password</label><input id="password" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={mode === 'signup' ? 8 : undefined} value={password} onChange={e => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-3" />{mode === 'signup' && <p className="mt-2 text-xs text-slate-500">Use at least 8 characters.</p>}</div>}
+        {mode === 'signup' && <label className="flex items-start gap-3 text-sm leading-5 text-slate-600"><input type="checkbox" required checked={acceptedTerms} onChange={event => setAcceptedTerms(event.target.checked)} className="mt-1" /><span>I have read and accept the <Link to="/terms" className="text-blue-700 underline">Terms of Service</Link> and acknowledge the <Link to="/privacy" className="text-blue-700 underline">Privacy Notice</Link>.</span></label>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         {message && <p role="status" className="rounded-xl bg-blue-50 p-3 text-sm leading-6 text-blue-900">{message}</p>}
         <button disabled={busy} className="w-full rounded-xl bg-slate-950 px-4 py-3 font-medium text-white disabled:opacity-50">{busy ? 'Please wait…' : mode === 'login' ? 'Log in' : mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Resend confirmation'}</button>
@@ -63,6 +65,6 @@ export default function Auth() {
         {mode === 'login' && <button disabled={busy} onClick={() => changeMode('confirm')}>Resend confirmation email</button>}
       </div>
     </div>
-    <Link to="/" className="mt-7 text-sm text-white/80">← Back to wrxs</Link>
+    <div className="mt-7 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-white/80"><Link to="/">← Back to wrxs</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/legal-notice">Legal notice</Link></div>
   </main>;
 }

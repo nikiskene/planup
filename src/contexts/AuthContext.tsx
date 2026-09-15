@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null; confirmed: boolean }>;
+  signUp: (email: string, password: string, acceptedTerms: boolean) => Promise<{ error: AuthError | null; confirmed: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -45,11 +45,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, acceptedTerms: boolean) => {
+    if (!acceptedTerms) return { error: new AuthError('Please accept the Terms of Service and Privacy Notice.'), confirmed: false };
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { legal_version: '2026-09-15', legal_accepted_at: new Date().toISOString() },
+      },
     });
     return { error, confirmed: Boolean(data.session) };
   };

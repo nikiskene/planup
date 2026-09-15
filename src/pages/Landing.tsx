@@ -64,7 +64,7 @@ export default function Landing() {
           </div>
         </section>
       </main>
-      <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-sm text-slate-500"><Link to="/" className="text-xl font-bold tracking-tighter text-slate-950">wrxs.</Link><span>Tasks, notes, relationships. A clearer day.</span><Link to={user ? '/app' : '/auth'}>{user ? 'Open workspace' : 'Log in'} →</Link></footer>
+      <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-sm text-slate-500"><Link to="/" className="text-xl font-bold tracking-tighter text-slate-950">wrxs.</Link><span>Tasks, notes, relationships. A clearer day.</span><span className="flex gap-4"><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/legal-notice">Legal notice</Link><Link to={user ? '/app' : '/auth'}>{user ? 'Open workspace' : 'Log in'} →</Link></span></footer>
     </div>
   );
 }
