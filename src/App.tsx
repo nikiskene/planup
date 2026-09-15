@@ -16,6 +16,7 @@ import Inbox from './pages/Inbox';
 import Tasks from './pages/Tasks';
 import TaskDetail from './pages/TaskDetail';
 import Notes from './pages/Notes';
+import QR from './pages/QR';
 import Dues from './pages/Dues';
 import Shopping from './pages/Shopping';
 import Settings from './pages/Settings';
@@ -75,6 +76,7 @@ function App() {
               />
 
               {/* Core app */}
+              <Route path="/qr" element={<AppPage><QR /></AppPage>} />
               <Route
                 path="/inbox"
                 element={

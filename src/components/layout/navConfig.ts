@@ -5,6 +5,7 @@ import {
   HandCoins,
   Home,
   NotebookPen,
+  QrCode,
   Settings,
   ShoppingCart,
   Users,
@@ -21,5 +22,6 @@ export const WORK_NAV_ITEMS: NavItem[] = [
   { label: 'Opportunities', href: '/crm/deals', icon: HandCoins },
   { label: 'Notes', href: '/notes', icon: NotebookPen },
   { label: 'Leads', href: '/crm/contacts', icon: Users },
+  { label: 'QR Codes', href: '/qr', icon: QrCode },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
