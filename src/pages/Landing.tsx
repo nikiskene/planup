@@ -47,6 +47,9 @@ export default function Landing() {
             </div>
           </div>
         </section>
+        <a href="https://www.producthunt.com/products/wrxs?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-wrxs" target="_blank" rel="noopener noreferrer" className="absolute bottom-4 right-4 z-10 block rounded-lg shadow-lg shadow-black/20 transition-transform hover:scale-[1.03] sm:bottom-5 sm:right-6" aria-label="Find wrxs on Product Hunt">
+          <img alt="wrxs - A workspace for tasks, relationships and daily life. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1251547&theme=light&t=1789489455466" className="h-auto w-36 sm:w-44" />
+        </a>
       </div>
         <section id="features" className="border-y border-stone-200 bg-white px-6 py-20">
           <div className="mx-auto max-w-6xl">
