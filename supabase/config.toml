@@ -1,0 +1,10 @@
+project_id = "planup"
+
+# Browser requests are authenticated by auth.getUser-equivalent HTTP verification
+# inside the handler, including workspace membership and billing-owner checks.
+[functions.wrxs-billing]
+verify_jwt = false
+
+# Stripe has no Supabase JWT; the handler validates raw-body HMAC signatures.
+[functions.wrxs-stripe-webhook]
+verify_jwt = false

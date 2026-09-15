@@ -104,3 +104,9 @@ Reference for email confirmation and recovery: https://supabase.com/docs/guides/
 ### Stripe price mapping follow-up
 
 `06_stripe_prices.sql` is prepared for manual execution after stage 05. The user supplied monthly `price_1UFxRwEQ9WPDgXa98gQsm56L` and annual `price_1UFxSXEQ9WPDgXa964oecX66`. The script checks both existing products and amounts, rejects conflicting price assignments or enabled checkout, and records the IDs without activating billing. Locally tested initial execution, rerun and conflicting-price rejection. This does not verify the IDs against Stripe: the authenticated payment backend must confirm live mode, product, USD amount, recurring interval, active state and intended Stripe account before enabling checkout.
+
+### Billing runtime follow-up
+
+`07_billing_runtime.sql` is prepared for the user to run manually after stage 06. It adds service-only billing coordination and guards against concurrent checkout, customer reassignment and writes from expired requests. It is rerunnable. It does not activate checkout or add paid-only restrictions to application data. Local validation includes administrator/workspace checks, RPC grants, competing leases and expired-lease rejection.
+
+See `../../functions/README.md` for the Stripe secret, webhook and portal setup sequence. The two new functions are deployed separately from Netlify; the original personal CRM importer is unchanged. After setup and a verified payment walkthrough, activation still requires the environment flag and catalog flags. Existing access/legacy-workspace treatment must be agreed before enforcing a paid-only public service.

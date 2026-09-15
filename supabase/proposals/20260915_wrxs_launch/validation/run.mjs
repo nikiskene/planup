@@ -34,5 +34,8 @@ try {
  const preserved=await db.query("select stripe_price_id from public.wrxs_price_catalog where billing_interval='month'");
  if(preserved.rows[0].stripe_price_id!=='price_existing_other') throw new Error('Conflicting price was overwritten');
  console.log('06_stripe_prices.sql, rerun, and conflicting-price protection PASS');
+ for(let run=0;run<2;run++) await db.exec(fs.readFileSync(dir+'07_billing_runtime.sql','utf8'));
+ await db.exec(fs.readFileSync(path.join(here,'billing.sql'),'utf8'));
+ console.log('07_billing_runtime.sql, rerun, and billing authorization/lease checks PASS');
 
 } catch(e){ console.error(e.message); if(e.query)console.error(e.query.slice(-1800));process.exitCode=1;}finally{await db.close();}
