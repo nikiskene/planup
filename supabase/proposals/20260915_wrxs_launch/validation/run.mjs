@@ -23,4 +23,16 @@ try {
  const products=await db.query('select billing_interval, stripe_product_id, stripe_price_id, checkout_enabled from public.wrxs_price_catalog order by amount_cents');
  if(products.rows.length!==2 || products.rows[0].stripe_product_id!=='prod_VGUQxjX7HY1nZM' || products.rows[1].stripe_product_id!=='prod_VGURINssZA7e4K' || products.rows.some(row=>row.checkout_enabled || row.stripe_price_id)) throw new Error('Product registration or inactive billing check failed');
  console.log('05_stripe_products.sql and rerun PASS; billing remains inactive');
+ const priceSql=fs.readFileSync(dir+'06_stripe_prices.sql','utf8');
+ for(let run=0;run<2;run++) await db.exec(priceSql);
+ const prices=await db.query('select stripe_price_id, checkout_enabled from public.wrxs_price_catalog order by amount_cents');
+ if(prices.rows.length!==2 || prices.rows[0].stripe_price_id!=='price_1UFxRwEQ9WPDgXa98gQsm56L' || prices.rows[1].stripe_price_id!=='price_1UFxSXEQ9WPDgXa964oecX66' || prices.rows.some(row=>row.checkout_enabled)) throw new Error('Price mapping or inactive checkout check failed');
+ await db.exec("update public.wrxs_price_catalog set stripe_price_id='price_existing_other' where billing_interval='month'");
+ let rejected=false;
+ try { await db.exec(priceSql); } catch { rejected=true; await db.exec('rollback'); }
+ if(!rejected) throw new Error('Conflicting price was not rejected');
+ const preserved=await db.query("select stripe_price_id from public.wrxs_price_catalog where billing_interval='month'");
+ if(preserved.rows[0].stripe_price_id!=='price_existing_other') throw new Error('Conflicting price was overwritten');
+ console.log('06_stripe_prices.sql, rerun, and conflicting-price protection PASS');
+
 } catch(e){ console.error(e.message); if(e.query)console.error(e.query.slice(-1800));process.exitCode=1;}finally{await db.close();}

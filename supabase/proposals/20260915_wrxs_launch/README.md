@@ -99,3 +99,8 @@ Reference for email confirmation and recovery: https://supabase.com/docs/guides/
 ### Stripe product registration follow-up
 
 `05_stripe_products.sql` is prepared for the user to run manually after stages 00–04. It records the supplied monthly and annual product IDs in a new optional `stripe_product_id` column. It verifies existing amounts, refuses to replace different product assignments or modify an enabled checkout, and preserves all existing price IDs. It is safe to rerun with the same assignments. This script does not create or verify Stripe prices and does not activate payments. Supply the two recurring `price_...` IDs for the subsequent price mapping.
+
+
+### Stripe price mapping follow-up
+
+`06_stripe_prices.sql` is prepared for manual execution after stage 05. The user supplied monthly `price_1UFxRwEQ9WPDgXa98gQsm56L` and annual `price_1UFxSXEQ9WPDgXa964oecX66`. The script checks both existing products and amounts, rejects conflicting price assignments or enabled checkout, and records the IDs without activating billing. Locally tested initial execution, rerun and conflicting-price rejection. This does not verify the IDs against Stripe: the authenticated payment backend must confirm live mode, product, USD amount, recurring interval, active state and intended Stripe account before enabling checkout.
