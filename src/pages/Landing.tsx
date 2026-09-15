@@ -19,7 +19,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-stone-50 text-slate-950">
       <main>
-      <div className="relative isolate overflow-hidden text-white">
+      <div className="relative isolate flex min-h-[100svh] flex-col overflow-hidden text-white">
       <BrandBackground />
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" aria-label="wrxs home" className="inline-flex"><BrandLogo /></Link>
@@ -28,12 +28,12 @@ export default function Landing() {
           <Link to={user ? '/app' : '/auth'} className="rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-white">{user ? 'Open workspace' : 'Log in'}</Link>
         </nav>
       </header>
-        <section className="mx-auto grid max-w-6xl gap-12 px-6 pb-20 pt-14 md:grid-cols-[1.2fr_1fr] md:items-center md:py-24">
+        <section className="mx-auto grid w-full max-w-6xl flex-1 content-center gap-8 px-5 py-10 sm:px-6 sm:py-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:gap-12 lg:py-16">
           <div>
             <p className="mb-5 text-xs font-semibold uppercase tracking-[0.22em] text-blue-200">A little order. A clearer day.</p>
-            <h1 className="max-w-2xl text-5xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">Make room for<br />what matters.</h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/80">Your tasks, notes, relationships and everyday lists, together in one workspace. wrxs helps you see what needs attention and take the next step.</p>
-            <div className="mt-8 flex flex-wrap items-center gap-5">
+            <h1 className="max-w-2xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">Make room for<br />what matters.</h1>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/80 sm:mt-6 sm:text-lg">Your tasks, notes, relationships and everyday lists, together in one workspace. wrxs helps you see what needs attention and take the next step.</p>
+            <div className="mt-7 flex flex-wrap items-center gap-4 sm:mt-8 sm:gap-5">
               <Link to={user ? '/app' : '/auth?mode=signup'} className="inline-flex items-center gap-2 rounded-full bg-blue-700 px-6 py-3 font-medium text-white hover:bg-blue-800">{user ? 'Open your workspace' : 'Create an account'}<ArrowRight size={18} /></Link>
               <a href="#features" className="text-sm font-medium">Explore the tools ↓</a>
             </div>
@@ -42,7 +42,7 @@ export default function Landing() {
           <div className="rounded-3xl border border-white/25 bg-slate-950/50 p-5 shadow-xl shadow-black/20 backdrop-blur-sm sm:p-6" aria-label="How wrxs works">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">How it works</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">One place to turn input into action.</h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               {[['Capture', 'Tasks, notes, leads and email.'], ['Focus', 'See what needs attention today.'], ['Move', 'Keep the next step close to the work.']].map(([label, text], index) => <div key={label} className="rounded-2xl border border-white/15 bg-white/10 p-4"><span className="text-xs font-semibold text-blue-200">0{index + 1}</span><h3 className="mt-2 font-medium">{label}</h3><p className="mt-1 text-sm leading-5 text-white/70">{text}</p></div>)}
             </div>
           </div>
