@@ -59,8 +59,18 @@ async function inbound(req: Request) {
   const supplied = req.headers.get('Authorization') === `Bearer ${inboundToken}` || new URL(req.url).searchParams.get('token') === inboundToken;
   if (!inboundToken || !supplied) return response({ error: 'Unauthorized.' }, 401);
   let payload: Json; try { payload = await req.json(); } catch { return response({ error: 'Invalid provider payload.' }, 400); }
-  const recipient = cleanEmail((addressList(payload.ToFull)[0] || {}).Email || payload.OriginalRecipient || payload.To);
   const sender = cleanEmail((payload.FromFull as Address | undefined)?.Email || payload.From);
+  // BCC recipients are intentionally absent from normal To headers. Postmark
+  // provides the SMTP envelope recipient as OriginalRecipient, and may also
+  // provide BccFull. Prefer those over visible recipients.
+  const captureCandidates = [
+    payload.OriginalRecipient,
+    ...addressList(payload.BccFull).map(item => item.Email),
+    ...addressList(payload.ToFull).map(item => item.Email),
+    ...addressList(payload.CcFull).map(item => item.Email),
+    payload.To,
+  ].map(cleanEmail).filter(email => email.endsWith('@wrxs.cc'));
+  const recipient = captureCandidates[0] || '';
   const [local, domain] = recipient.split('@');
   if (domain !== 'wrxs.cc' || !local || !sender) return response({ received: true, ignored: true });
   try {
