@@ -81,7 +81,6 @@ async function inbound(req: Request) {
       let contact = contacts[0];
       if (!contact) { const rows = await rest<{ id: string }[]>('crm_contacts', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ workspace_id: route.workspace_id, ...names(person.name, person.email), email: person.email, created_by: route.created_by }) }); contact = rows[0]; }
       await rest('crm_interactions', { method: 'POST', body: JSON.stringify({ workspace_id: route.workspace_id, contact_id: contact.id, created_by: route.created_by, channel: 'email', activity_kind: 'contact', occurred_at: occurred, title: subject, note: text || `BCC captured through ${route.local_part}@wrxs.cc`, next_action: 'none' }) });
-      await rest('crm_email_ingestions', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ workspace_id: route.workspace_id, internet_message_id: eventId, sender_email: sender, recipient_email: person.email, subject, status: 'processed' }) });
     }
     await rest(`wrxs_email_deliveries?workspace_id=eq.${route.workspace_id}&provider=eq.postmark&provider_event_id=eq.${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify({ status: 'processed', processed_at: new Date().toISOString() }) });
     return response({ received: true });
