@@ -1,6 +1,8 @@
 type Json = Record<string, unknown>;
 type Route = { id: string; workspace_id: string; created_by: string; local_part: string; domain: string; enabled: boolean };
 type Sender = { email: string };
+type SubjectRule = { subject_contains: string; lead_status_id: string };
+type LeadStatus = { key: string };
 type Address = { Email?: string; Name?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALIAS = /^[a-z0-9][a-z0-9.-]{0,28}[a-z0-9]$/;
@@ -86,10 +88,16 @@ async function inbound(req: Request) {
     const subject = typeof payload.Subject === 'string' ? payload.Subject.trim().slice(0, 500) : '(No subject)';
     const text = typeof payload.TextBody === 'string' ? payload.TextBody.trim().slice(0, 12000) : '';
     const occurred = typeof payload.Date === 'string' && Number.isFinite(Date.parse(payload.Date)) ? new Date(payload.Date).toISOString() : new Date().toISOString();
+    const rules = await rest<SubjectRule[]>(`crm_email_subject_rules?workspace_id=eq.${route.workspace_id}&enabled=eq.true&select=subject_contains,lead_status_id`);
+    const matchedRule = rules.filter(rule => subject.toLowerCase().includes(rule.subject_contains.trim().toLowerCase()))
+      .sort((left, right) => right.subject_contains.length - left.subject_contains.length)[0];
+    const matchedStatus = matchedRule
+      ? (await rest<LeadStatus[]>(`crm_lead_statuses?workspace_id=eq.${route.workspace_id}&id=eq.${matchedRule.lead_status_id}&select=key&limit=1`))[0]
+      : undefined;
     for (const person of unique) {
       const contacts = await rest<{ id: string }[]>(`crm_contacts?workspace_id=eq.${route.workspace_id}&email=ilike.${encodeURIComponent(person.email)}&select=id&limit=1`);
       let contact = contacts[0];
-      if (!contact) { const rows = await rest<{ id: string }[]>('crm_contacts', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ workspace_id: route.workspace_id, ...names(person.name, person.email), email: person.email, created_by: route.created_by }) }); contact = rows[0]; }
+      if (!contact) { const rows = await rest<{ id: string }[]>('crm_contacts', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ workspace_id: route.workspace_id, ...names(person.name, person.email), email: person.email, lead_status: matchedStatus?.key || null, created_by: route.created_by }) }); contact = rows[0]; }
       await rest('crm_interactions', { method: 'POST', body: JSON.stringify({ workspace_id: route.workspace_id, contact_id: contact.id, created_by: route.created_by, channel: 'email', activity_kind: 'contact', occurred_at: occurred, title: subject, note: text || `BCC captured through ${route.local_part}@wrxs.cc`, next_action: 'none' }) });
     }
     await rest(`wrxs_email_deliveries?workspace_id=eq.${route.workspace_id}&provider=eq.postmark&provider_event_id=eq.${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify({ status: 'processed', processed_at: new Date().toISOString() }) });

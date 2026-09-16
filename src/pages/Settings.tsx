@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Database } from '../lib/types';
 import EmailCaptureSettings from './settings/EmailCaptureSettings';
+import EmailSubjectRulesSettings from './settings/EmailSubjectRulesSettings';
 
 type WorkspaceMember = Database['public']['Tables']['workspace_members']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -553,6 +554,7 @@ export default function Settings() {
         </div>
 
         <EmailCaptureSettings />
+        <EmailSubjectRulesSettings />
 
         {/* Categories */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
