@@ -75,7 +75,7 @@ export function useCrmContacts(
           is_active,
           created_at,
           updated_at,
-          company:crm_companies ( id, name ),
+          company:crm_companies!crm_contacts_company_id_fkey ( id, name ),
           deal:crm_deals!crm_contacts_associated_deal_id_fkey ( id, name )
         `
         )

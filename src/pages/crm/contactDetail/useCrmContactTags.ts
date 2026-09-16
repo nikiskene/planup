@@ -24,7 +24,7 @@ export function useCrmContactTags(
         .from('crm_contact_tags')
         .select(
           `
-          tag:crm_tags (
+          tag:crm_tags!crm_contact_tags_tag_id_fkey (
             id,
             name
           )

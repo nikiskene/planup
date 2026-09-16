@@ -47,7 +47,7 @@ export function useCrmContactInteractions(
         .select(
           `
           *,
-          company:crm_companies (
+          company:crm_companies!crm_interactions_company_fk (
             id,
             name
           )

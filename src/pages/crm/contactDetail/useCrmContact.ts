@@ -101,7 +101,7 @@ export function useCrmContact({ activeWorkspaceId, id, showToast, onNotFound }: 
           phone,
           created_at,
           updated_at,
-          company:crm_companies (
+          company:crm_companies!crm_contacts_company_id_fkey (
             id,
             name
           ),
