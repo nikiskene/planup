@@ -1,9 +1,7 @@
+import { sentEmail } from '../_shared/sent-email.ts';
+import { captureMessage, cleanEmail } from '../_shared/email-capture.ts';
 type Json = Record<string, unknown>;
 type Route = { id: string; workspace_id: string; created_by: string; local_part: string; domain: string; enabled: boolean };
-type Sender = { email: string };
-type SubjectRule = { subject_contains: string; lead_status_id: string };
-type LeadStatus = { key: string };
-type Address = { Email?: string; Name?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALIAS = /^[a-z0-9][a-z0-9.-]{0,28}[a-z0-9]$/;
 const RESERVED = new Set(['admin', 'api', 'billing', 'contact', 'hello', 'legal', 'mail', 'noreply', 'privacy', 'support', 'team', 'wrxs']);
@@ -23,10 +21,6 @@ async function rest<T>(path: string, init: RequestInit = {}, service = true): Pr
   if (!r.ok) throw new Error(`database_${r.status}`);
   const text = await r.text(); return (text ? JSON.parse(text) : null) as T;
 }
-function cleanEmail(value: unknown) { const email = typeof value === 'string' ? value.trim().toLowerCase() : ''; return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ''; }
-function addressList(value: unknown): Address[] { return Array.isArray(value) ? value.filter(item => item && typeof item === 'object') as Address[] : []; }
-function names(name: string | undefined, email: string) { const parts = (name || '').trim().split(/\s+/).filter(Boolean); return { first_name: parts[0] || email.split('@')[0], last_name: parts.slice(1).join(' ') || null }; }
-async function digest(value: string) { const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)); return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join(''); }
 async function authenticated(req: Request, workspace: string) {
   const authorization = req.headers.get('Authorization') || '';
   if (!authorization.startsWith('Bearer ')) throw new Error('unauthorized');
@@ -53,7 +47,8 @@ async function configure(req: Request, body: Json, origin: string | null) {
     } else {
       const rows = await rest<Route[]>('wrxs_email_routes', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ workspace_id: workspace, created_by: user.id, local_part: alias, domain: 'wrxs.cc', enabled: captureEnabled }) }); route = rows[0];
     }
-    await rest('wrxs_email_senders', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ workspace_id: workspace, user_id: user.id, email: user.email, verified_at: new Date().toISOString(), verification_method: 'confirmed_account', revoked_at: null }) });
+    const previousSender = await rest<{ capture_source: string }[]>(`wrxs_email_senders?workspace_id=eq.${workspace}&email=eq.${encodeURIComponent(user.email)}&select=capture_source`);
+    await rest('wrxs_email_senders?on_conflict=workspace_id,email', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ workspace_id: workspace, user_id: user.id, email: user.email, verified_at: new Date().toISOString(), verification_method: 'confirmed_account', revoked_at: null, capture_source: previousSender[0]?.capture_source || 'postmark' }) });
     return response({ address: `${alias}@wrxs.cc`, enabled: captureEnabled, setup_required: !captureEnabled }, 200, origin);
   } catch (e) { const code = e instanceof Error ? e.message : ''; return response({ error: code === 'confirm_email' ? 'Confirm your wrxs account email first.' : code === 'forbidden' ? 'Workspace administrator required.' : 'Unable to save this wrxs ID.' }, code === 'unauthorized' ? 401 : code === 'forbidden' ? 403 : 503, origin); }
 }
@@ -61,47 +56,31 @@ async function inbound(req: Request) {
   const supplied = req.headers.get('Authorization') === `Bearer ${inboundToken}` || new URL(req.url).searchParams.get('token') === inboundToken;
   if (!inboundToken || !supplied) return response({ error: 'Unauthorized.' }, 401);
   let payload: Json; try { payload = await req.json(); } catch { return response({ error: 'Invalid provider payload.' }, 400); }
-  const sender = cleanEmail((payload.FromFull as Address | undefined)?.Email || payload.From);
-  // BCC recipients are intentionally absent from normal To headers. Postmark
-  // provides the SMTP envelope recipient as OriginalRecipient, and may also
-  // provide BccFull. Prefer those over visible recipients.
-  const captureCandidates = [
-    payload.OriginalRecipient,
-    ...addressList(payload.BccFull).map(item => item.Email),
-    ...addressList(payload.ToFull).map(item => item.Email),
-    ...addressList(payload.CcFull).map(item => item.Email),
-    payload.To,
-  ].map(cleanEmail).filter(email => email.endsWith('@wrxs.cc'));
-  const recipient = captureCandidates[0] || '';
-  const [local, domain] = recipient.split('@');
-  if (domain !== 'wrxs.cc' || !local || !sender) return response({ received: true, ignored: true });
+  if (!captureEnabled) return response({ error: 'Capture temporarily unavailable.' }, 503);
   try {
+    let message = await captureMessage(payload);
+    if (!message) return response({ received: true, ignored: true });
+    const [local] = message.recipient.split('@');
     const routes = await rest<Route[]>(`wrxs_email_routes?local_part=eq.${encodeURIComponent(local)}&domain=eq.wrxs.cc&enabled=eq.true&select=id,workspace_id,created_by,local_part,domain,enabled`);
-    const route = routes[0]; if (!route) return response({ received: true, ignored: true });
-    const allowed = await rest<Sender[]>(`wrxs_email_senders?workspace_id=eq.${route.workspace_id}&email=eq.${encodeURIComponent(sender)}&verified_at=not.is.null&revoked_at=is.null&select=email`);
-    if (!allowed[0]) return response({ received: true, ignored: true });
-    const messageId = typeof payload.MessageID === 'string' ? payload.MessageID.slice(0, 500) : '';
-    const eventId = messageId || await digest(JSON.stringify({ recipient, sender, subject: payload.Subject, date: payload.Date, text: payload.TextBody }));
-    try { await rest('wrxs_email_deliveries', { method: 'POST', body: JSON.stringify({ workspace_id: route.workspace_id, route_id: route.id, provider: 'postmark', provider_event_id: eventId, message_id: messageId || null, status: 'processing', attempts: 1 }) }); } catch { return response({ received: true, duplicate: true }); }
-    const people = [...addressList(payload.ToFull), ...addressList(payload.CcFull)].map(item => ({ email: cleanEmail(item.Email), name: item.Name || '' })).filter(item => item.email && item.email !== recipient && item.email !== sender);
-    const unique = [...new Map(people.map(person => [person.email, person])).values()];
-    const subject = typeof payload.Subject === 'string' ? payload.Subject.trim().slice(0, 500) : '(No subject)';
-    const text = typeof payload.TextBody === 'string' ? payload.TextBody.trim().slice(0, 12000) : '';
-    const occurred = typeof payload.Date === 'string' && Number.isFinite(Date.parse(payload.Date)) ? new Date(payload.Date).toISOString() : new Date().toISOString();
-    const rules = await rest<SubjectRule[]>(`crm_email_subject_rules?workspace_id=eq.${route.workspace_id}&enabled=eq.true&select=subject_contains,lead_status_id`);
-    const matchedRule = rules.filter(rule => subject.toLowerCase().includes(rule.subject_contains.trim().toLowerCase()))
-      .sort((left, right) => right.subject_contains.length - left.subject_contains.length)[0];
-    const matchedStatus = matchedRule
-      ? (await rest<LeadStatus[]>(`crm_lead_statuses?workspace_id=eq.${route.workspace_id}&id=eq.${matchedRule.lead_status_id}&select=key&limit=1`))[0]
-      : undefined;
-    for (const person of unique) {
-      const contacts = await rest<{ id: string }[]>(`crm_contacts?workspace_id=eq.${route.workspace_id}&email=ilike.${encodeURIComponent(person.email)}&select=id&limit=1`);
-      let contact = contacts[0];
-      if (!contact) { const rows = await rest<{ id: string }[]>('crm_contacts', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ workspace_id: route.workspace_id, ...names(person.name, person.email), email: person.email, lead_status: matchedStatus?.key || null, created_by: route.created_by }) }); contact = rows[0]; }
-      await rest('crm_interactions', { method: 'POST', body: JSON.stringify({ workspace_id: route.workspace_id, contact_id: contact.id, created_by: route.created_by, channel: 'email', activity_kind: 'contact', occurred_at: occurred, title: subject, note: text || `BCC captured through ${route.local_part}@wrxs.cc`, next_action: 'none' }) });
+    const route = routes[0];
+    if (!route) return response({ received: true, ignored: true });
+    const senders = await rest<{ capture_source: string }[]>(`wrxs_email_senders?workspace_id=eq.${route.workspace_id}&email=eq.${encodeURIComponent(message.sender)}&verified_at=not.is.null&revoked_at=is.null&select=capture_source`);
+    if (!senders[0]) return response({ received: true, ignored: true });
+    if (senders[0].capture_source === 'microsoft_sent') {
+      const enriched = await sentEmail(payload, message.sender, {
+        tenant: Deno.env.get('MS_GRAPH_TENANT_ID') || '', client: Deno.env.get('MS_GRAPH_CLIENT_ID') || '',
+        secret: Deno.env.get('MS_GRAPH_CLIENT_SECRET') || '',
+      });
+      // Preserve the already-resolved SMTP destination when enriching headers.
+      message = await captureMessage({ ...enriched, OriginalRecipient: message.recipient });
+      if (!message) return response({ error: 'Invalid sent email.' }, 503);
     }
-    await rest(`wrxs_email_deliveries?workspace_id=eq.${route.workspace_id}&provider=eq.postmark&provider_event_id=eq.${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify({ status: 'processed', processed_at: new Date().toISOString() }) });
-    return response({ received: true });
+    // One database transaction covers delivery, contacts and interactions. A
+    // failed write rolls back the claim, so provider retries can safely recover.
+    const result = await rest<Json>('rpc/wrxs_capture_email', {
+      method: 'POST', body: JSON.stringify({ p_message: message }),
+    });
+    return response(result);
   } catch { return response({ error: 'Temporary ingestion failure.' }, 503); }
 }
 Deno.serve(async req => {

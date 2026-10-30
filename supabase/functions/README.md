@@ -1,6 +1,6 @@
 # wrxs billing services
 
-The frontend deploys through GitHub → Netlify. These two payment handlers deploy separately to the existing Supabase project. The legacy `crm-inbound-email` function is not modified.
+The frontend deploys through GitHub → Netlify. These two payment handlers deploy separately to the existing Supabase project. Email capture uses `wrxs-email-capture`; see `../../docs/EMAIL_CAPTURE.md` for migration and retirement status.
 
 ## Manual setup order
 
@@ -24,7 +24,7 @@ The frontend deploys through GitHub → Netlify. These two payment handlers depl
 - Webhooks fetch current subscriptions from Stripe under the lease. Out-of-order events never overwrite state with their old payloads. Duplicates are acknowledged; transient failures return a retryable failure. Unsupported events and customers outside this app are ignored. Subscription records are only granted a paid-through timestamp when active with a paid latest invoice.
 - Full Stripe event bodies, cards and payment details are not stored. API responses and secrets are not logged or returned to clients.
 - Stripe status writes do not yet enforce a paid-access wall on application data. Existing users remain able to use their workspaces. A reviewed grandfathering/access policy and corresponding database permissions remain necessary before a paid-only public launch.
-- The existing personal email importer is still tied to Niki's workspace/profile and mailbox. Personal business data is workspace-scoped; the email importer has not yet been generalized into per-account provider configuration. Credentials must remain server secrets, never profile fields.
+- Email capture resolves workspace and verified sender from the database. Optional Microsoft Sent Items enrichment preserves BCC recipients and follow-ups for migrated senders. Credentials remain server secrets, never profile fields.
 
 ## Verification
 
