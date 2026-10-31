@@ -18,23 +18,26 @@ sender's automatic follow-up-task behavior. There are no hardcoded mailbox,
 workspace or user IDs in the capture implementation. Unavailable Sent Items
 return a retryable failure, not silently incomplete history.
 
-## Production state — 2026-10-30
+## Production state — 2026-10-31
 
 - `niki@wrxs.cc` is enabled for the existing Niki workspace; verified sender is
   `ns@iacy.com`. Before this change, its ledger contained 15 processed deliveries.
 - Migration `20261030190000` was applied and recorded in migration history.
-- The replacement handler is deployed. Account enrichment remains on the existing
-  Postmark mode until the mail-provider cutover can be verified.
-- The old receiver is still active pending Postmark sign-in. Do not describe the
-  retirement as complete or remove it before the replacement delivery is checked.
+- The replacement handler is deployed. On October 31, the verified sender
+  `ns@iacy.com` was switched to `microsoft_sent`; fresh end-to-end delivery is
+  awaiting the user's WRXS cutover test email.
+- The old receiver is still active pending replacement-delivery verification
+  and provider cleanup. Postmark initially passed its webhook connectivity check
+  on the WRXS stream, but the session expired before retirement could finish.
+  Do not describe the retirement as complete.
 - Historical contacts, interactions, ingestion ledgers and tasks are retained.
 
 ## Remaining cutover
 
 1. Sign into Postmark and inspect the WRXS inbound server/domain and existing
    legacy webhook. Never expose webhook tokens in screenshots, logs or commits.
-2. Verify the WRXS inbound destination and webhook target. Switch this workspace's
-   verified sender to `microsoft_sent` to preserve its old full-BCC/follow-up behavior.
+2. Verify the WRXS inbound destination and webhook target. This workspace's
+   verified sender is already on `microsoft_sent` to preserve its old full-BCC/follow-up behavior.
 3. Have the user send a test from their verified address, BCCing the WRXS address,
    with known To/Cc and another BCC recipient. Verify delivery, contacts, history,
    subject rules and follow-ups in the app; replay must not add duplicates.
@@ -58,4 +61,8 @@ The downloaded legacy source is backed up outside the repository at
   and service-only RPC permissions. No test records persist.
 - Frontend typecheck still reports existing errors in untouched frontend files;
   this change does not alter frontend source or claim those errors are fixed.
-- End-to-end mail delivery and legacy retirement remain pending provider access.
+- Public DNS verified: `wrxs.cc` MX points to `inbound.postmarkapp.com`.
+- Live hosting verified: `/assets/index-BBUjth93.js` is published and contains no
+  `crm@iacy.com` prompt.
+- End-to-end mail delivery and legacy retirement remain pending renewed provider
+  access and the user's fresh test email.
