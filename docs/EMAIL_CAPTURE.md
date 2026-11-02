@@ -32,8 +32,10 @@ return a retryable failure, not silently incomplete history.
   Sent Items enrichment, and the new database transaction. It was addressed only
   to `niki@wrxs.cc`, with empty Cc/Bcc lists. Zero contacts/interactions was the
   correct result: capture addresses are excluded. This was not a capture failure.
-- A final test with a real non-capture recipient was requested to verify live
-  interaction and follow-up creation. Awaiting that email at the time of this update.
+- Final end-to-end test passed on November 2 at 10:46 UTC: Postmark delivery
+  `789a9a9b-8904-4c2e-a0dc-ae7b00a48b42` was processed through the new route,
+  recording `WRXS final capture test` for `stolz2000@gmail.com` and creating
+  exactly one follow-up task, after the old function had been deleted.
 - Historical contacts, interactions, ingestion ledgers and tasks are retained.
   No mailbox or historical Postmark server was deleted. Microsoft Graph credentials
   remain necessary for Sent Items enrichment. External mailbox forwarding settings
@@ -57,5 +59,6 @@ The downloaded legacy source is backed up outside the repository at
 - Public DNS verified: `wrxs.cc` MX points to `inbound.postmarkapp.com`.
 - Live hosting verified: `/assets/index-BBUjth93.js` is published and contains no
   `crm@iacy.com` prompt.
-- Live mail transport and legacy backend retirement are verified. The final
-  non-capture-recipient test remains pending; do not claim that test passed yet.
+- Live mail transport, recipient history, follow-up creation and legacy backend
+  retirement are verified. Replaying the first actual provider delivery through
+  the capture RPC returned `duplicate: true` without adding records.
